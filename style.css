@@ -1,0 +1,67 @@
+/* Styles globaux */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    padding: 0;
+    background: linear-gradient(135deg, #6e7dff, #b3e9ff);
+    color: #333;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+/* Titre */
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+}
+
+/* Conteneur de l'application */
+.app-container {
+    background: rgba(255, 255, 255, 0.8); /* Effet glassmorphism */
+    backdrop-filter: blur(10px); /* Flou d'arrière-plan */
+    border-radius: 15px;
+    padding: 20px;
+    max-width: 600px; /* Largeur maximale pour le mode desktop */
+    width: 100%; /* S'étend en mode mobile */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Pied de page */
+footer {
+    text-align: center;
+    margin-top: 20px;
+}
+
+/* Icônes de navigation */
+.nav-icons {
+    margin-top: 10px;
+}
+
+.nav-icons i {
+    font-size: 1.5rem;
+    margin: 0 10px;
+    cursor: pointer;
+    transition: color 0.3s;
+}
+
+.nav-icons i:hover {
+    color: #6e7dff; /* Changement de couleur au survol */
+}
+
+/* Responsive design */
+@media (max-width: 600px) {
+    h1 {
+        font-size: 2rem;
+    }
+
+    .app-container {
+        padding: 15px;
+    }
+
+    .nav-icons i {
+        font-size: 1.2rem;
+    }
+}
