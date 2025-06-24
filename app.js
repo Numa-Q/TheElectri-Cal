@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.12"; // **INCREMENTATION : Correction des problèmes de UI et Day.js**
+const APP_VERSION = "v20.13"; // **INCREMENTATION : Correction du plugin Day.js isSameOrBefore**
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -112,7 +112,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     dayjs.extend(dayjs_plugin_customParseFormat);
     dayjs.extend(dayjs_plugin_isBetween);
     dayjs.extend(dayjs_plugin_weekday);
-    dayjs.extend(dayjs_plugin_isSameOrAfter); // CORRECTION : AJOUT ESSENTIEL DU PLUGIN EXTEND
+    dayjs.extend(dayjs_plugin_isSameOrBefore); // CORRECTION : Utiliser isSameOrBefore
+    // dayjs.extend(dayjs_plugin_isSameOrAfter); // Pas nécessaire si isSameOrBefore suffit
 
     try {
         await openDB(); // Ouvre la base de données au démarrage
@@ -151,7 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportPlanningToPdfMultiMonth);
 
     const exportPngBtn = document.getElementById('exportPngBtn');
-    if (exportPngBtn) exportPngBtn.addEventListener('click', exportPlanningToPngMultiMonth); // CORRECTION: click listener manquant
+    if (exportPngBtn) exportPngBtn.addEventListener('click', exportPlanningToPngMultiMonth);
 
     const exportJsonBtn = document.getElementById('exportJsonBtn');
     if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportDataToJson);
@@ -222,7 +223,7 @@ function showModal(contentHtml, title, buttons = []) {
             </div>
         </div>
     `;
-    modal.style.display = 'flex'; // CORRECTION: Assure le centrage via flexbox
+    modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('show'), 10);
     document.body.style.overflow = 'hidden'; // Empêche le défilement du body
 
@@ -252,10 +253,10 @@ function closeModal() {
 function createAndShowModal(title, content, primaryButtonText, primaryButtonAction, cancelButtonText = 'Annuler', cancelButtonAction = 'closeModal()') {
     const buttons = [];
     if (primaryButtonText && primaryButtonAction) {
-        buttons.push({ text: primaryButtonText, onclick: primaryButtonAction, class: 'button-primary' }); // CORRECTION: classe button-primary
+        buttons.push({ text: primaryButtonText, onclick: primaryButtonAction, class: 'button-primary' });
     }
     if (cancelButtonText && cancelButtonAction) {
-        buttons.push({ text: cancelButtonText, onclick: cancelButtonAction, class: 'button-secondary' }); // CORRECTION: classe button-secondary
+        buttons.push({ text: cancelButtonText, onclick: cancelButtonAction, class: 'button-secondary' });
     }
     showModal(content, title, buttons);
 }
@@ -333,7 +334,6 @@ async function savePeople() {
         for (const person of people) {
             await addItem(STORE_PEOPLE, person);
         }
-        // showToast('Personnes sauvegardées !', 'success'); // Moins de toasts
     } catch (error) {
         console.error("Erreur lors de la sauvegarde des personnes:", error);
         showToast("Erreur lors de la sauvegarde des personnes.", "error");
@@ -397,7 +397,6 @@ function togglePersonVisibility(personId, buttonElement) {
     const person = people.find(p => p.id === personId);
     if (person) {
         person.isVisible = !person.isVisible;
-        // savePeople() sera appelé par le gestionnaire d'événement ci-dessus
         
         const icon = buttonElement.querySelector('i');
         if (person.isVisible) {
@@ -550,7 +549,6 @@ async function saveCalendarEvents() {
         for (const event of allCalendarEvents) {
             await addItem(STORE_EVENTS, event);
         }
-        // showToast('Événements sauvegardés !', 'success'); // Moins de toasts
     } catch (error) {
         console.error("Erreur lors de la sauvegarde des événements:", error);
         showToast("Erreur lors de la sauvegarde des événements.", "error");
@@ -613,9 +611,9 @@ function initFullCalendar() {
         },
         eventClick: function(info) {
             const eventId = info.event.id;
-            const eventType = info.event.extendedProps.type;
-            const personId = info.event.extendedProps.personId;
-            showEditPlanningEventModal(eventId, eventType, personId);
+            // const eventType = info.event.extendedProps.type; // Non utilisé
+            // const personId = info.event.extendedProps.personId; // Non utilisé
+            showEditPlanningEventModal(eventId);
         },
         select: function(info) {
             showAddPlanningEventModal(info.startStr, info.endStr);
@@ -742,9 +740,9 @@ async function addPlanningEvent() {
     if (eventType === 'telework_recurrent' && recurrenceDays.length > 0 && recurrenceEndDate) {
         const recurrenceGroupId = crypto.randomUUID(); // Générer un ID unique pour cette série
         let currentDay = dayjs(startDate);
-        const endRecurrenceDayjs = dayjs(recurrenceEndDate);
+        const endRecurrenceDayjs = dayjs(recururrenceEndDate);
 
-        while (currentDay.isSameOrBefore(endRecurrenceDayjs, 'day')) { // Utilisation correcte de isSameOrBefore
+        while (currentDay.isSameOrBefore(endRecurrenceDayjs, 'day')) {
             if (recurrenceDays.includes(currentDay.day())) {
                 eventsToAdd.push(generateEvent(currentDay.format('YYYY-MM-DD'), currentDay.format('YYYY-MM-DD'), recurrenceGroupId));
             }
@@ -787,7 +785,6 @@ function showEditPlanningEventModal(eventId) {
 
     let deleteButtonsHtml = `<button class="button-danger" onclick="confirmDeleteEvent('${event.id}')">Supprimer cet événement</button>`;
     if (event.recurrenceGroupId) {
-        // CORRECTION: Ajouter la classe ml-2 ici
         deleteButtonsHtml += `<button class="button-danger ml-2" onclick="confirmDeleteRecurrenceSeries('${event.recurrenceGroupId}')">Supprimer la série récurrente</button>`;
     }
 
@@ -843,7 +840,6 @@ async function editPlanningEvent(eventId) {
         backgroundColor: eventColor,
         borderColor: eventColor,
         allDay: true
-        // recurrenceGroupId n'est pas modifié lors de l'édition d'un événement individuel
     };
 
     allCalendarEvents[eventIndex] = updatedEvent;
@@ -1062,7 +1058,7 @@ async function exportPlanningToPdfMultiMonth() {
                 }
             } else {
                 finalWidthMm = imgWidthMm;
-                finalHeightMm = imgHeightMm;
+                finalHeightMm = imgHeightHeight;
             }
 
             // Centrer l'image sur la page
