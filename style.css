@@ -149,17 +149,17 @@ main {
     font-style: italic;
 }
 
+/* Fix for sidebar action buttons: use --button-bg color */
 .person-actions button {
-    /* MODIFIED: Align with main button styling */
-    background-color: var(--button-bg); /* Orange color */
-    border: 1px solid var(--button-bg); /* Matching border */
-    color: white; /* White icon color */
+    background-color: var(--button-bg); /* Use the main button background color */
+    border: 1px solid var(--button-bg); /* Match the border color */
+    color: white; /* Ensure icon is white */
     cursor: pointer;
     margin-left: 5px;
     font-size: 0.9em;
     padding: 5px;
     border-radius: 5px;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
     display: inline-flex; /* Ensure flex behavior for centering icon */
     align-items: center;
     justify-content: center;
@@ -257,19 +257,41 @@ header h1 {
     flex-grow: 1;
 }
 
-.theme-toggle-button {
+/* Global button styles for sidebar action buttons and header theme button */
+#addPersonBtn,
+#addPlanningEventBtn,
+#exportPdfBtn,
+#exportPngBtn,
+#exportJsonBtn,
+#importJsonBtn,
+#showStatsBtn,
+#themeToggleButton {
     background-color: var(--button-bg);
     color: white;
-    border: none;
+    border: none; /* No border for these specific buttons */
     padding: 8px 15px;
     border-radius: 5px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    /* Ensure consistent spacing and appearance for sidebar buttons */
+    display: flex; /* Use flex to align content if needed */
+    align-items: center;
+    justify-content: center;
+    gap: 5px; /* Space between icon and text if present */
 }
 
-.theme-toggle-button:hover {
+#addPersonBtn:hover,
+#addPlanningEventBtn:hover,
+#exportPdfBtn:hover,
+#exportPngBtn:hover,
+#exportJsonBtn:hover,
+#importJsonBtn:hover,
+#showStatsBtn:hover,
+#themeToggleButton:hover {
     background-color: var(--button-hover-bg);
+    transform: translateY(-1px);
 }
+
 
 /* Footer */
 footer {
@@ -435,6 +457,7 @@ footer {
     margin-top: 20px;
 }
 
+/* Global button styles for specific functional buttons (not all buttons) */
 button {
     padding: 10px 20px;
     border: none;
@@ -455,7 +478,7 @@ button.button-primary:hover {
 }
 
 button.button-secondary {
-    background-color: #6c757d; /* Gris par défaut */
+    background-color: #6c757d; /* Gris par default */
     color: white;
 }
 
