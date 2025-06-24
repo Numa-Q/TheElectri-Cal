@@ -17,12 +17,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Mise à jour de l'année du copyright et du nom/version de l'application
     document.getElementById('currentYear').textContent = dayjs().year();
-    document.querySelector('footer p').innerHTML = `&copy; ${dayjs().year()}. ${APP_NAME}. Version ${APP_VERSION}`;
+    document.getElementById('appInfo').textContent = `${APP_NAME}. Version ${APP_VERSION}`;
 
-
-    // Initialisation de Day.js
+    // Initialisation de Day.js plugins
     dayjs.extend(dayjs_plugin_customParseFormat);
     dayjs.extend(dayjs_plugin_isBetween);
+    dayjs.extend(dayjs_plugin_weekday); // Ajouté pour day().day()
 
     // Charger les données initiales
     loadPeopleFromLocalStorage();
@@ -60,9 +60,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Écouteur d'événement pour le bouton "Ajouter une personne"
+    // Écouteur d'événement pour les boutons
     document.getElementById('addPersonBtn').addEventListener('click', () => {
         showAddPersonModal();
+    });
+
+    document.getElementById('addPlanningEventBtn').addEventListener('click', () => {
+        // Ouvre la modale sans présélection de date au clic sur le bouton général
+        showAddPlanningEventModal(dayjs().format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD'));
     });
 });
 
@@ -107,12 +112,10 @@ function showModal(title, contentHtml, onConfirm, onCancel = () => {}, showConfi
 
     const modal = document.createElement('div');
     modal.classList.add('modal');
-    // Correction ici: le display flex doit être appliqué sur le modal lui-même pour qu'il centre le contenu
     modal.style.display = 'flex'; // Assure que le conteneur modal est un flexbox
 
-
     const modalContent = document.createElement('div');
-    modalContent.classList.add('modal-content'); // Cette classe a maintenant un z-index plus élevé
+    modalContent.classList.add('modal-content');
 
     modalContent.innerHTML = `
         <span class="close-button">&times;</span>
@@ -234,7 +237,7 @@ function addPerson(name) {
 function deletePerson(personId) {
     showModal(
         "Confirmer la suppression",
-        "Êtes-vous sûr de vouloir supprimer cette personne ? Toutes ses disponibilités seront effacées.",
+        "Êtes-vous sûr de vouloir supprimer cette personne ? Tous les événements qui lui sont associés seront effacés.",
         () => {
             people = people.filter(p => p.id !== personId);
             // Supprimer aussi les événements associés à cette personne du calendrier
@@ -242,7 +245,6 @@ function deletePerson(personId) {
             savePeopleToLocalStorage();
             saveCalendarEvents(); // Sauvegarder les événements mis à jour
             renderPeopleList(); // Mettre à jour l'affichage de la liste
-            // calendar.refetchEvents(); // Pas nécessaire si on supprime les events directement
             showToast("Personne supprimée avec succès.", "success");
         },
         () => {
@@ -295,13 +297,12 @@ function initFullCalendar() {
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay'
         },
-        // Événements du calendrier (chargés par loadCalendarEvents)
         events: [], // Le tableau est vide au démarrage, les événements sont ajoutés après
         editable: true, // Permettre de glisser-déposer les événements
         selectable: true, // Permettre la sélection de dates
         dateClick: function(info) {
             // Gérer le clic sur une date pour ajouter une disponibilité
-            showAddAvailabilityModal(info.dateStr);
+            showAddPlanningEventModal(info.dateStr, info.dateStr);
         },
         eventClick: function(info) {
             // Gérer le clic sur un événement pour le modifier/supprimer
@@ -309,11 +310,10 @@ function initFullCalendar() {
         },
         select: function(info) {
             // Gérer la sélection d'une plage de dates
-            showAddAvailabilityModal(info.startStr, info.endStr);
+            showAddPlanningEventModal(info.startStr, info.endStr);
         },
         eventDrop: function(info) {
             // Gérer le déplacement d'un événement (drag & drop)
-            // L'événement info.event a déjà été mis à jour par FullCalendar
             showToast(`Événement "${info.event.title}" déplacé au ${dayjs(info.event.start).format('DD/MM/YYYY')}`, 'success');
             saveCalendarEvents(); // Sauvegarder après le déplacement
         },
@@ -327,33 +327,35 @@ function initFullCalendar() {
 }
 
 /**
- * Affiche la modale pour ajouter une disponibilité (télétravail, congé, contrainte).
+ * Affiche la modale pour gérer les présences/absences (télétravail, congé, permanence).
  * @param {string} startStr - Date de début de la sélection (format YYYY-MM-DD).
- * @param {string} [endStr] - Date de fin de la sélection (format YYYY-MM-DD).
+ * @param {string} [endStr] - Date de fin de la sélection (format YYYY-MM-DD), exclusive pour FullCalendar.
  */
-function showAddAvailabilityModal(startStr, endStr = startStr) {
+function showAddPlanningEventModal(startStr, endStr = startStr) {
     if (people.length === 0) {
-        showToast("Veuillez d'abord ajouter des personnes habilitées pour assigner des disponibilités.", "error");
+        showToast("Veuillez d'abord ajouter des personnes habilitées pour assigner des événements.", "error");
         return;
     }
 
-    // Ajuster endStr pour l'affichage dans la modale: FullCalendar end date is exclusive, so for a single day, end should be start + 1 day
-    // Pour l'affichage, si les dates sont les mêmes (clic sur un jour), on affiche juste la date de début.
-    // Si une plage est sélectionnée, on affiche la date de fin réelle (décrémentée de 1 jour).
-    const displayEndDate = (startStr === endStr || dayjs(endStr).diff(dayjs(startStr), 'day') === 1) ? startStr : dayjs(endStr).subtract(1, 'day').format('YYYY-MM-DD');
-
+    // Ajuster endStr pour l'affichage dans la modale: FullCalendar end date is exclusive.
+    // Si la sélection est d'un jour unique, la date de fin affichée est la même que la date de début.
+    // Si une plage est sélectionnée, la date de fin affichée est la date de fin réelle (endStr - 1 jour).
+    let displayEndDate = dayjs(endStr).subtract(1, 'day').format('YYYY-MM-DD');
+    if (startStr === displayEndDate) { // Si la sélection est d'un jour unique (start = end - 1 jour)
+        displayEndDate = startStr;
+    }
 
     const peopleOptions = people.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
 
     const content = `
-        <label for="availabilityPerson">Personne :</label>
-        <select id="availabilityPerson">${peopleOptions}</select>
+        <label for="eventPerson">Personne :</label>
+        <select id="eventPerson">${peopleOptions}</select>
 
-        <label for="availabilityType">Type :</label>
-        <select id="availabilityType">
+        <label for="eventType">Type d'événement :</label>
+        <select id="eventType">
+            <option value="permanence">Permanence</option>
             <option value="telework">Télétravail</option>
             <option value="holiday">Congé</option>
-            <option value="recurrent">Contrainte Répétitive (hebdomadaire)</option>
         </select>
 
         <div id="dateRangeFields">
@@ -362,31 +364,30 @@ function showAddAvailabilityModal(startStr, endStr = startStr) {
 
             <label for="endDate">Date de fin :</label>
             <input type="date" id="endDate" value="${displayEndDate}">
+             <p style="font-size: 0.8em; color: gray; margin-top: 5px;">Si jour unique, mettre la même date de début et de fin.</p>
         </div>
 
-        <div id="recurrentFields" style="display: none;">
-            <label for="recurrentDay">Jour de la semaine :</label>
-            <select id="recurrentDay">
-                <option value="1">Lundi</option>
-                <option value="2">Mardi</option>
-                <option value="3">Mercredi</option>
-                <option value="4">Jeudi</option>
-                <option value="5">Vendredi</option>
-                <option value="6">Samedi</option>
-                <option value="0">Dimanche</option>
-            </select>
-            <label for="recurrentUntilDate">Répéter jusqu'au :</label>
-            <input type="date" id="recurrentUntilDate" value="${dayjs().add(6, 'month').format('YYYY-MM-DD')}">
-             <p style="font-size: 0.8em; color: gray; margin-top: 5px;">Les contraintes répétitives créeront des événements de télétravail jusqu'à cette date.</p>
+        <div id="teleworkRecurringFields" style="display: none;">
+            <h4>Jours de télétravail répétitif :</h4>
+            <div class="day-checkboxes">
+                <label><input type="checkbox" name="recurringDay" value="1"> Lundi</label>
+                <label><input type="checkbox" name="recurringDay" value="2"> Mardi</label>
+                <label><input type="checkbox" name="recurringDay" value="3"> Mercredi</label>
+                <label><input type="checkbox" name="recurringDay" value="4"> Jeudi</label>
+                <label><input type="checkbox" name="recurringDay" value="5"> Vendredi</label>
+            </div>
+            <label for="recurringUntilDate">Répéter jusqu'au :</label>
+            <input type="date" id="recurringUntilDate" value="${dayjs().add(6, 'month').format('YYYY-MM-DD')}">
+            <p style="font-size: 0.8em; color: gray; margin-top: 5px;">Les événements seront générés jusqu'à cette date.</p>
         </div>
     `;
 
     showModal(
-        "Ajouter une disponibilité",
+        "Gérer les Présences/Absences", // Nouveau titre de la modale
         content,
         () => {
-            const personId = document.getElementById('availabilityPerson').value;
-            const type = document.getElementById('availabilityType').value;
+            const personId = document.getElementById('eventPerson').value;
+            const type = document.getElementById('eventType').value;
             const selectedPerson = people.find(p => p.id === personId);
 
             if (!selectedPerson) {
@@ -394,15 +395,20 @@ function showAddAvailabilityModal(startStr, endStr = startStr) {
                 return;
             }
 
-            if (type === 'recurrent') {
-                const recurrentDay = parseInt(document.getElementById('recurrentDay').value);
-                const recurrentUntilDate = document.getElementById('recurrentUntilDate').value;
+            if (type === 'telework' && document.getElementById('isTeleworkRecurring').checked) {
+                const selectedDays = Array.from(document.querySelectorAll('input[name="recurringDay"]:checked'))
+                                       .map(cb => parseInt(cb.value));
+                const recurringUntilDate = document.getElementById('recurringUntilDate').value;
 
-                if (!recurrentUntilDate) {
-                    showToast("Veuillez spécifier une date de fin pour la contrainte répétitive.", "error");
+                if (selectedDays.length === 0) {
+                    showToast("Veuillez sélectionner au moins un jour pour le télétravail répétitif.", "error");
                     return;
                 }
-                addRecurrentConstraint(personId, selectedPerson.name, recurrentDay, recurrentUntilDate);
+                if (!recurringUntilDate) {
+                    showToast("Veuillez spécifier une date de fin pour le télétravail répétitif.", "error");
+                    return;
+                }
+                addRecurringTelework(personId, selectedPerson.name, selectedDays, recurringUntilDate);
             } else {
                 let startDate = document.getElementById('startDate').value;
                 let endDate = document.getElementById('endDate').value;
@@ -411,7 +417,8 @@ function showAddAvailabilityModal(startStr, endStr = startStr) {
                     showToast("Veuillez spécifier les dates de début et de fin.", "error");
                     return;
                 }
-                 // Adjust end date for FullCalendar exclusivity for ranges
+
+                // Adjust end date for FullCalendar exclusivity for ranges
                 if (dayjs(endDate).isSame(dayjs(startDate), 'day')) {
                     // Si une seule journée, la fin pour FullCalendar est le lendemain
                     endDate = dayjs(startDate).add(1, 'day').format('YYYY-MM-DD');
@@ -422,44 +429,67 @@ function showAddAvailabilityModal(startStr, endStr = startStr) {
 
                 addEventToCalendar(personId, selectedPerson.name, type, startDate, endDate);
             }
-            showToast("Disponibilité ajoutée avec succès !", 'success');
+            showToast("Événement de planning ajouté avec succès !", 'success');
         }
     );
 
-    // Gérer l'affichage des champs en fonction du type de disponibilité
-    const availabilityTypeSelect = document.getElementById('availabilityType');
+    // Gérer l'affichage des champs en fonction du type d'événement
+    const eventTypeSelect = document.getElementById('eventType');
     const dateRangeFields = document.getElementById('dateRangeFields');
-    const recurrentFields = document.getElementById('recurrentFields');
+    const teleworkRecurringFields = document.getElementById('teleworkRecurringFields');
 
-    // Mettre à jour l'état initial des champs si une sélection par défaut est déjà récurrente
-    if (availabilityTypeSelect.value === 'recurrent') {
-        dateRangeFields.style.display = 'none';
-        recurrentFields.style.display = 'block';
-    } else {
-        dateRangeFields.style.display = 'block';
-        recurrentFields.style.display = 'none';
+    // Ajout d'une case à cocher "Répétitif" pour le télétravail
+    const teleworkTypeOption = document.querySelector('#eventType option[value="telework"]');
+    if (teleworkTypeOption && !teleworkTypeOption.dataset.hasRecurringCheckbox) {
+        const checkboxHtml = `
+            <div style="margin-top: 15px;">
+                <label>
+                    <input type="checkbox" id="isTeleworkRecurring"> Télétravail répétitif
+                </label>
+            </div>
+        `;
+        dateRangeFields.insertAdjacentHTML('afterend', checkboxHtml);
+        teleworkTypeOption.dataset.hasRecurringCheckbox = 'true'; // Marque pour éviter de dupliquer
     }
 
+    const isTeleworkRecurringCheckbox = document.getElementById('isTeleworkRecurring');
 
-    availabilityTypeSelect.addEventListener('change', (event) => {
-        if (event.target.value === 'recurrent') {
-            dateRangeFields.style.display = 'none';
-            recurrentFields.style.display = 'block';
-        } else {
-            dateRangeFields.style.display = 'block';
-            recurrentFields.style.display = 'none';
-            // Pré-remplir les dates si un click a eu lieu sur le calendrier
-            document.getElementById('startDate').value = startStr;
-            // Réajuster displayEndDate car la valeur initiale est passée en paramètre,
-            // mais la logique de conversion pour FullCalendar est dans addEventToCalendar.
-            // Ici, on veut juste la date de fin telle qu'elle sera affichée à l'utilisateur.
-            document.getElementById('endDate').value = (startStr === endStr || dayjs(endStr).diff(dayjs(startStr), 'day') === 1) ? startStr : dayjs(endStr).subtract(1, 'day').format('YYYY-MM-DD');
+
+    const updateVisibility = () => {
+        const selectedType = eventTypeSelect.value;
+
+        // Réinitialiser la visibilité de la case à cocher pour le télétravail répétitif
+        if (isTeleworkRecurringCheckbox) {
+            isTeleworkRecurringCheckbox.parentElement.style.display = 'none';
+            isTeleworkRecurringCheckbox.checked = false; // Réinitialiser l'état
         }
-    });
+
+        if (selectedType === 'telework') {
+            dateRangeFields.style.display = 'block';
+            if (isTeleworkRecurringCheckbox) {
+                isTeleworkRecurringCheckbox.parentElement.style.display = 'block';
+            }
+            if (isTeleworkRecurringCheckbox && isTeleworkRecurringCheckbox.checked) {
+                teleworkRecurringFields.style.display = 'block';
+                dateRangeFields.style.display = 'none'; // Masquer les dates simples si récurrent
+            } else {
+                teleworkRecurringFields.style.display = 'none';
+            }
+        } else if (selectedType === 'permanence' || selectedType === 'holiday') {
+            dateRangeFields.style.display = 'block';
+            teleworkRecurringFields.style.display = 'none';
+        }
+    };
+
+    eventTypeSelect.addEventListener('change', updateVisibility);
+
+    if (isTeleworkRecurringCheckbox) {
+        isTeleworkRecurringCheckbox.addEventListener('change', updateVisibility);
+    }
 
     // Déclencher le changement initialement pour masquer/afficher les bons champs
     // Cela assure que la modale s'affiche correctement au premier affichage
-    availabilityTypeSelect.dispatchEvent(new Event('change'));
+    updateVisibility();
 }
 
 
@@ -469,16 +499,21 @@ function showAddAvailabilityModal(startStr, endStr = startStr) {
  */
 function showEditEventModal(event) {
     const personName = people.find(p => p.id === event.extendedProps.personId)?.name || 'Inconnu';
-    const eventType = event.extendedProps.type === 'telework' ? 'Télétravail' : 'Congé';
+    const eventTypeMap = {
+        'telework': 'Télétravail',
+        'holiday': 'Congé',
+        'permanence': 'Permanence'
+    };
+    const eventTypeDisplay = eventTypeMap[event.extendedProps.type] || 'Type inconnu';
 
     // Ajuster la date de fin pour l'affichage (FullCalendar est exclusif)
-    const displayEndDate = event.endStr ? dayjs(event.endStr).subtract(1, 'day').format('YYYY-MM-DD') : dayjs(event.startStr).format('YYYY-MM-DD');
+    let displayEndDate = event.endStr ? dayjs(event.endStr).subtract(1, 'day').format('YYYY-MM-DD') : dayjs(event.startStr).format('YYYY-MM-DD');
 
     const content = `
         <p><strong>Personne :</strong> ${personName}</p>
-        <p><strong>Type :</strong> ${eventType}</p>
+        <p><strong>Type :</strong> ${eventTypeDisplay}</p>
         <p><strong>Du :</strong> ${dayjs(event.startStr).format('DD/MM/YYYY')}</p>
-        <p><strong>Au :</strong> ${displayEndDate !== dayjs(event.startStr).format('YYYY-MM-DD') ? dayjs(displayEndDate).format('DD/MM/YYYY') : ' (jour unique)'}</p>
+        <p><strong>Au :</strong> ${dayjs(event.startStr).isSame(dayjs(displayEndDate), 'day') ? '(jour unique)' : dayjs(displayEndDate).format('DD/MM/YYYY')}</p>
         <div style="margin-top: 20px; text-align: center;">
             <button id="deleteEventBtn" style="background-color: #dc3545; color: white;">Supprimer l'événement</button>
         </div>
@@ -511,10 +546,10 @@ function showEditEventModal(event) {
 
 
 /**
- * Ajoute un événement au calendrier (télétravail ou congé).
+ * Ajoute un événement au calendrier (télétravail, congé, ou permanence).
  * @param {string} personId - ID de la personne concernée.
  * @param {string} personName - Nom de la personne concernée.
- * @param {'telework'|'holiday'} type - Type d'absence.
+ * @param {'telework'|'holiday'|'permanence'} type - Type d'événement.
  * @param {string} start - Date de début (YYYY-MM-DD).
  * @param {string} end - Date de fin (YYYY-MM-DD), exclusive pour FullCalendar.
  */
@@ -527,17 +562,20 @@ function addEventToCalendar(personId, personName, type, start, end) {
     } else if (type === 'holiday') {
         title = `Congé - ${personName}`;
         classNames = ['holiday'];
+    } else if (type === 'permanence') {
+        title = `Permanence - ${personName}`;
+        classNames = ['permanence'];
     }
 
     const newEvent = {
-        id: `event_${Date.now()}`, // ID unique pour l'événement
-        personId: personId, // Stocke l'ID de la personne dans extendedProps
+        id: `event_${Date.now()}_${personId}_${type}`, // ID plus robuste
+        personId: personId,
         title: title,
         start: start,
-        end: end, // FullCalendar end est exclusif, donc si c'est pour un jour, end = start + 1 jour
+        end: end,
         allDay: true,
         classNames: classNames,
-        extendedProps: { // Stocke des propriétés additionnelles ici
+        extendedProps: {
             type: type
         }
     };
@@ -546,33 +584,33 @@ function addEventToCalendar(personId, personName, type, start, end) {
 }
 
 /**
- * Ajoute une contrainte répétitive.
- * Pour l'instant, cela générera des événements individuels. Plus tard, on pourrait gérer les récurrences différemment.
+ * Ajoute des événements de télétravail répétitifs.
  * @param {string} personId - ID de la personne concernée.
  * @param {string} personName - Nom de la personne.
- * @param {number} dayOfWeek - Jour de la semaine (0=dimanche, 1=lundi...6=samedi).
- * @param {string} untilDateStr - Date de fin de la contrainte (YYYY-MM-DD).
+ * @param {number[]} daysOfWeek - Tableau des jours de la semaine (0=dimanche, 1=lundi...6=samedi).
+ * @param {string} untilDateStr - Date de fin de la récurrence (YYYY-MM-DD).
  */
-function addRecurrentConstraint(personId, personName, dayOfWeek, untilDateStr) {
+function addRecurringTelework(personId, personName, daysOfWeek, untilDateStr) {
     let currentDate = dayjs(); // Commence à partir d'aujourd'hui
     const untilDate = dayjs(untilDateStr);
 
     let eventsGenerated = 0;
-    const maxEvents = 365; // Limite pour éviter une boucle infinie ou trop d'événements
+    const maxEvents = 365 * 2; // Limite généreuse pour deux ans de récurrence
 
     while (currentDate.isBefore(untilDate) || currentDate.isSame(untilDate, 'day')) {
-        if (currentDate.day() === dayOfWeek) {
+        // dayjs().day() retourne 0 pour dimanche, 1 pour lundi, etc.
+        if (daysOfWeek.includes(currentDate.day())) {
             // Ajouter un événement de télétravail pour ce jour
             addEventToCalendar(personId, personName, 'telework', currentDate.format('YYYY-MM-DD'), currentDate.add(1, 'day').format('YYYY-MM-DD'));
             eventsGenerated++;
-            if (eventsGenerated > maxEvents) {
+            if (eventsGenerated >= maxEvents) {
                 showToast("Trop d'événements générés pour la contrainte répétitive. Limite atteinte.", "error");
                 break;
             }
         }
         currentDate = currentDate.add(1, 'day');
     }
-    showToast(`Contrainte répétitive ajoutée pour ${personName}. ${eventsGenerated} événements générés.`, 'success');
+    showToast(`Télétravail répétitif ajouté pour ${personName}. ${eventsGenerated} événements générés.`, 'success');
 }
 
 
@@ -582,13 +620,13 @@ function addRecurrentConstraint(personId, personName, dayOfWeek, untilDateStr) {
 function saveCalendarEvents() {
     const events = calendar.getEvents().map(event => ({
         id: event.id,
-        personId: event.extendedProps.personId, // Assurez-vous que personId est bien stocké
+        personId: event.extendedProps.personId,
         title: event.title,
         start: event.startStr,
         end: event.endStr,
         allDay: event.allDay,
         classNames: event.classNames,
-        extendedProps: event.extendedProps // Sauvegarde toutes les extendedProps
+        extendedProps: event.extendedProps
     }));
     localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
 }
@@ -601,8 +639,7 @@ function loadCalendarEvents() {
     if (storedEvents) {
         const events = JSON.parse(storedEvents);
         events.forEach(event => {
-            // FullCalendar requiert un objet EventSource Input pour l'ajout.
-            // On s'assure que les extendedProps sont correctement transmises.
+            // Reconstruit l'objet événement correctement pour FullCalendar
             calendar.addEvent({
                 id: event.id,
                 title: event.title,
@@ -610,7 +647,7 @@ function loadCalendarEvents() {
                 end: event.end,
                 allDay: event.allDay,
                 classNames: event.classNames,
-                extendedProps: event.extendedProps
+                extendedProps: event.extendedProps // Assure que les extendedProps sont conservées
             });
         });
     }
