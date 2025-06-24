@@ -14,14 +14,15 @@
         <aside class="sidebar">
             <h2>Actions</h2>
             <button id="addPersonBtn">Ajouter une personne</button>
-            <button id="exportPdfBtn">Exporter PDF</button>
+            <button id="addPlanningEventBtn">Gérer les Présences/Absences</button> <button id="exportPdfBtn">Exporter PDF</button>
             <button id="exportPngBtn">Exporter PNG</button>
             <button id="exportJsonBtn">Exporter JSON</button>
             <button id="importJsonBtn">Importer JSON</button>
             <button id="showStatsBtn">Afficher Statistiques</button>
             <button id="themeToggleButton">Thème Sombre</button>
 
-            <div class="people-list-container glass-effect"> <h3>Personnes habilitées</h3>
+            <div class="people-list-container glass-effect">
+                <h3>Personnes habilitées</h3>
                 <ul id="peopleList" class="compact-list">
                     </ul>
             </div>
@@ -36,14 +37,14 @@
     <div id="toastsContainer" aria-live="polite" aria-atomic="true"></div>
 
     <footer>
-        <p>&copy; <span id="currentYear"></span>. The Electri-Cal. Version v20.3</p> </footer>
+        <p>&copy; <span id="currentYear"></span>. <span id="appInfo"></span></p> </footer>
 
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales-all.min.js'></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/customParseFormat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isBetween.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/weekday.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
 
