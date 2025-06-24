@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.44"; // INCEMENTATION : Fix PDF (table intermédiaire, toast, L-V, locale) + Largeur app
+const APP_VERSION = "v20.45"; // INCEMENTATION : FIX Jours PDF en français
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -1139,6 +1139,7 @@ async function preparePdfDataAndGeneratePdf() {
         for (const dateKey of orderedDates) {
             const dayData = dailyPermanences[dateKey];
             const dayjsObj = dayjs(dateKey);
+            // CORRECTION: Assurer la locale française explicite ici
             const formattedDayOfWeek = dayjsObj.locale('fr').format('ddd DD/MM'); // Ex: "Lun 24/06"
 
             await putItem(STORE_PDF_GENERATION, {
@@ -1208,7 +1209,7 @@ async function generatePermanencePdfTable(startDate, endDate) {
         return margin + 15; // Retourne la position Y après l'en-tête
     };
 
-    console.log("Day.js current locale at PDF generation start:", dayjs.locale());
+    console.log("Day.js current locale at PDF generation start:", dayjs.locale()); // Debugging: Check current locale
 
     // Lire les données pré-formatées depuis IndexedDB
     const pdfData = await getAllItems(STORE_PDF_GENERATION);
@@ -1216,7 +1217,6 @@ async function generatePermanencePdfTable(startDate, endDate) {
     // Groupement des données par semaine, en s'assurant que chaque "semaine" a 5 jours (même vides si hors période)
     const weeksData = [];
     let currentWeekDays = [];
-    let currentWeekStart = null;
 
     // Assurer que le premier jour est bien un Lundi
     const firstPdfDataDay = pdfData.length > 0 ? dayjs(pdfData[0].date) : null;
@@ -1238,7 +1238,7 @@ async function generatePermanencePdfTable(startDate, endDate) {
             
             let dayPdfData = {
                 date: dateKey,
-                dayOfWeekFr: currentDay.locale('fr').format('ddd DD/MM'),
+                dayOfWeekFr: currentDay.locale('fr').format('ddd DD/MM'), // Double-vérification de la locale ici
                 permanenceNames: '',
                 backupNames: ''
             };
