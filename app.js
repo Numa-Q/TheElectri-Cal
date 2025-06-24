@@ -9,8 +9,7 @@ const STORAGE_KEY_EVENTS = 'electricalPermanenceEvents'; // Pour les futurs év�
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.3";
-
+const APP_VERSION = "v20.4"; // Incrémentation de la version
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log(`${APP_NAME} - Version ${APP_VERSION} chargée !`);
@@ -358,7 +357,7 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
             <option value="holiday">Congé</option>
         </select>
 
-        <div class="telework-recurring-checkbox-container" style="display: none; margin-top: 15px;">
+        <div id="teleworkRecurringCheckboxContainer" style="margin-top: 15px; display: none;">
             <label>
                 <input type="checkbox" id="isTeleworkRecurring"> Télétravail répétitif
             </label>
@@ -442,41 +441,45 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
         }
     );
 
-    // Gérer l'affichage des champs en fonction du type d'événement
+    // --- LOGIQUE DE VISIBILITÉ DES CHAMPS DE LA MODALE ---
     const eventTypeSelect = document.getElementById('eventType');
     const dateRangeFields = document.getElementById('dateRangeFields');
     const teleworkRecurringFields = document.getElementById('teleworkRecurringFields');
-    const teleworkRecurringCheckboxContainer = document.querySelector('.telework-recurring-checkbox-container');
+    const teleworkRecurringCheckboxContainer = document.getElementById('teleworkRecurringCheckboxContainer'); // <-- Nouvelle référence ici
     const isTeleworkRecurringCheckbox = document.getElementById('isTeleworkRecurring');
-
 
     const updateVisibility = () => {
         const selectedType = eventTypeSelect.value;
 
-        // Réinitialiser l'état des éléments
+        // Réinitialiser l'état initial pour tous les champs
         dateRangeFields.style.display = 'block';
         teleworkRecurringFields.style.display = 'none';
         teleworkRecurringCheckboxContainer.style.display = 'none';
-        isTeleworkRecurringCheckbox.checked = false; // Important: décocher à chaque changement de type
+        isTeleworkRecurringCheckbox.checked = false; // Toujours décocher au changement de type
 
         if (selectedType === 'telework') {
-            teleworkRecurringCheckboxContainer.style.display = 'block';
+            teleworkRecurringCheckboxContainer.style.display = 'block'; // Afficher la checkbox de récurrence
+
+            // Si la checkbox est cochée, masquer les dates simples et afficher les dates de récurrence
             if (isTeleworkRecurringCheckbox.checked) {
                 dateRangeFields.style.display = 'none';
                 teleworkRecurringFields.style.display = 'block';
             } else {
+                // Sinon (décochée), afficher les dates simples
                 dateRangeFields.style.display = 'block';
                 teleworkRecurringFields.style.display = 'none';
             }
-        } else if (selectedType === 'permanence' || selectedType === 'holiday') {
+        } else {
+            // Pour permanence ou congé, toujours afficher les dates simples
             dateRangeFields.style.display = 'block';
         }
     };
 
+    // Attacher les écouteurs d'événements
     eventTypeSelect.addEventListener('change', updateVisibility);
-    isTeleworkRecurringCheckbox.addEventListener('change', updateVisibility);
+    isTeleworkRecurringCheckbox.addEventListener('change', updateVisibility); // Cet écouteur est crucial pour l'interactivité de la checkbox
 
-    // Déclencher la fonction de mise à jour au chargement de la modale
+    // Déclencher la fonction au chargement initial de la modale
     updateVisibility();
 }
 
@@ -588,6 +591,10 @@ function addRecurringTelework(personId, personName, daysOfWeek, untilDateStr) {
     while (currentDate.isBefore(untilDate) || currentDate.isSame(untilDate, 'day')) {
         // dayjs().day() retourne 0 pour dimanche, 1 pour lundi, etc.
         // On veut tester si le jour de la semaine de currentDate est inclus dans daysOfWeek.
+        // Attention: dayjs().day() pour lundi est 1, pour dimanche est 0.
+        // Nos checkboxes vont de 1 (lundi) à 5 (vendredi).
+        // Il faut s'assurer que les valeurs de la checkbox correspondent aux valeurs de dayjs().day().
+        // Lundi=1, Mardi=2, Mercredi=3, Jeudi=4, Vendredi=5
         if (daysOfWeek.includes(currentDate.day())) {
             // Ajouter un événement de télétravail pour ce jour
             addEventToCalendar(personId, personName, 'telework', currentDate.format('YYYY-MM-DD'), currentDate.add(1, 'day').format('YYYY-MM-DD'));
