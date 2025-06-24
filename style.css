@@ -1,53 +1,498 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Electri-Cal</title> <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css' rel='stylesheet' />
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <header>
-        <h1>The Electri-Cal: Gestion du Planning de Permanence Électrique</h1> </header>
+/* style.css */
 
-    <main>
-        <aside class="sidebar">
-            <h2>Actions</h2>
-            <button id="addPersonBtn">Ajouter une personne</button>
-            <button id="addPlanningEventBtn">Gérer les Présences/Absences</button> <button id="exportPdfBtn">Exporter PDF</button>
-            <button id="exportPngBtn">Exporter PNG</button>
-            <button id="exportJsonBtn">Exporter JSON</button>
-            <button id="importJsonBtn">Importer JSON</button>
-            <button id="showStatsBtn">Afficher Statistiques</button>
-            <button id="themeToggleButton">Thème Sombre</button>
+/* Variables CSS pour les couleurs du thème clair */
+:root {
+    --bg-gradient-start: #fceabb; /* Couleur chaude douce */
+    --bg-gradient-end: #f8b500;   /* Couleur chaude plus intense */
+    --main-bg-color: rgba(255, 255, 255, 0.4); /* Fond glassmorphism clair */
+    --border-color: rgba(255, 255, 255, 0.3);
+    --text-color: #333;
+    --header-bg: #e9a600; /* Une couleur qui s'harmonise avec le dégradé */
+    --button-bg: #ff7f50; /* Corail, pour un bouton chaleureux */
+    --button-hover-bg: #e6673d;
+    --sidebar-text-color: #444;
+    --modal-bg: rgba(255, 255, 255, 0.9);
+    --toast-info-bg: #17a2b8;
+    --toast-success-bg: #28a745;
+    --toast-error-bg: #dc3545;
+    --toast-text-color: white;
+    --footer-bg: rgba(255, 255, 255, 0.5);
+    --footer-text-color: #555;
+    --person-item-bg: rgba(255, 255, 255, 0.6); /* Fond pour les éléments de liste de personnes */
+    --person-item-hover-bg: rgba(255, 255, 255, 0.8);
+    --input-bg: rgba(255, 255, 255, 0.7);
+    --input-border-focus: rgba(255, 127, 80, 0.3);
 
-            <div class="people-list-container glass-effect">
-                <h3>Personnes habilitées</h3>
-                <ul id="peopleList" class="compact-list">
-                    </ul>
-            </div>
-        </aside>
+    /* Couleurs des événements FullCalendar */
+    --event-telework-bg: #4CAF50; /* Vert pour télétravail */
+    --event-telework-border: #4CAF50;
+    --event-holiday-bg: #F44336; /* Rouge pour congé */
+    --event-holiday-border: #F44336;
+    --event-permanence-bg: #2196F3; /* Bleu pour permanence */
+    --event-permanence-border: #2196F3;
+}
 
-        <section class="main-content">
-            <div id="calendar"></div>
-        </section>
-    </main>
+/* Thème sombre */
+body.dark-mode {
+    --bg-gradient-start: #353b48; /* Dégradé sombre doux */
+    --bg-gradient-end: #2f3640;   /* Dégradé sombre plus profond */
+    --main-bg-color: rgba(0, 0, 0, 0.4); /* Fond glassmorphism sombre */
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-color: #f0f0f0;
+    --header-bg: #2c313a;
+    --button-bg: #5f748d; /* Bleu-gris plus sombre */
+    --button-hover-bg: #4a5d73;
+    --sidebar-text-color: #e0e0e0;
+    --modal-bg: rgba(45, 45, 45, 0.9);
+    --toast-info-bg: #0d47a1; /* Bleu plus foncé */
+    --toast-success-bg: #1b5e20; /* Vert plus foncé */
+    --toast-error-bg: #b71c1c; /* Rouge plus foncé */
+    --toast-text-color: white;
+    --footer-bg: rgba(0, 0, 0, 0.5);
+    --footer-text-color: #bbb;
+    --person-item-bg: rgba(0, 0, 0, 0.6);
+    --person-item-hover-bg: rgba(0, 0, 0, 0.8);
+    --input-bg: rgba(0, 0, 0, 0.7);
+    --input-border-focus: rgba(95, 116, 141, 0.3);
 
-    <div id="modalsContainer"></div>
-    <div id="toastsContainer" aria-live="polite" aria-atomic="true"></div>
+    /* Couleurs des événements FullCalendar - Dark Mode */
+    --event-telework-bg: #2E7D32; /* Vert foncé */
+    --event-telework-border: #2E7D32;
+    --event-holiday-bg: #B71C1C; /* Rouge foncé */
+    --event-holiday-border: #B71C1C;
+    --event-permanence-bg: #1565C0; /* Bleu foncé */
+    --event-permanence-border: #1565C0;
+}
 
-    <footer>
-        <p>&copy; <span id="currentYear"></span>. <span id="appInfo"></span></p> </footer>
 
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
-    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales-all.min.js'></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/customParseFormat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isBetween.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/weekday.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Police plus moderne */
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+    color: var(--text-color);
+    transition: background 0.3s ease, color 0.3s ease; /* Transition douce pour le thème */
+}
 
-    <script src="app.js"></script>
-</body>
-</html>
+header {
+    background-color: var(--header-bg);
+    color: white;
+    padding: 15px 20px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Ombre plus prononcée */
+    transition: background-color 0.3s ease;
+}
+
+main {
+    display: flex;
+    flex-grow: 1;
+    padding: 20px;
+    gap: 20px;
+}
+
+/* Base Glassmorphism pour les éléments principaux */
+.glass-effect { /* La classe est maintenue car elle sera appliquée directement */
+    background: var(--main-bg-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px); /* Effet de flou */
+    -webkit-backdrop-filter: blur(10px); /* Pour Safari */
+    border: 1px solid var(--border-color);
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Applique glass-effect aux éléments principaux */
+.sidebar, .main-content, .people-list-container {
+    composes: glass-effect; /* Conceptuellement, cela hérite des propriétés */
+    /* En CSS pur, il faut dupliquer les propriétés de .glass-effect ici */
+    background: var(--main-bg-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+
+.sidebar {
+    padding: 20px;
+    flex: 0 0 250px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--sidebar-text-color);
+}
+
+.sidebar h2 {
+    margin-top: 0;
+    color: var(--text-color);
+    font-size: 1.5em;
+}
+
+.sidebar button {
+    background-color: var(--button-bg);
+    color: var(--toast-text-color);
+    padding: 12px 15px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.sidebar button:hover {
+    background-color: var(--button-hover-bg);
+    transform: translateY(-2px);
+}
+
+.main-content {
+    padding: 20px;
+    flex-grow: 1;
+}
+
+#calendar {
+    max-width: 100%;
+    margin: 0 auto;
+    font-size: 0.9em;
+}
+
+/* Ajustements pour FullCalendar pour le thème */
+.fc .fc-button {
+    background-color: var(--button-bg);
+    color: var(--toast-text-color);
+    border: none;
+    transition: background-color 0.2s ease;
+    box-shadow: none;
+}
+.fc .fc-button:hover {
+    background-color: var(--button-hover-bg);
+}
+.fc-toolbar-title {
+    color: var(--text-color);
+}
+.fc-daygrid-day-number {
+    color: var(--text-color);
+}
+.fc-col-header-cell-cushion {
+    color: var(--text-color);
+}
+
+/* Styles spécifiques pour les événements FullCalendar */
+.fc-event {
+    border: none; /* Supprimer la bordure par défaut de FC */
+    color: white;
+    font-size: 0.85em;
+    padding: 2px 5px;
+    border-radius: 4px;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    white-space: normal; /* Permettre le retour à la ligne pour les longs titres */
+    word-wrap: break-word; /* Casser les mots longs */
+}
+
+/* Télétravail */
+.fc-event.telework {
+    background-color: var(--event-telework-bg);
+    border-left: 5px solid var(--event-telework-border);
+}
+
+/* Congé */
+.fc-event.holiday {
+    background-color: var(--event-holiday-bg);
+    border-left: 5px solid var(--event-holiday-border);
+}
+
+/* Permanence */
+.fc-event.permanence {
+    background-color: var(--event-permanence-bg);
+    border-left: 5px solid var(--event-permanence-border);
+    font-weight: bold; /* Rendre le texte plus gras pour la permanence */
+}
+
+
+/* Styles pour les modales */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.6); /* Fond plus sombre pour mieux contraster la modale */
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: var(--modal-bg);
+    margin: auto;
+    padding: 30px; /* Plus de padding */
+    border: 1px solid var(--border-color);
+    border-radius: 12px; /* Bordures plus douces */
+    width: 90%;
+    max-width: 550px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3); /* Ombre plus profonde */
+    position: relative;
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+    z-index: 1001; /* Doit être supérieur au z-index du .modal */
+}
+
+.modal-content h2 {
+    color: var(--text-color);
+    margin-top: 0;
+}
+
+.modal-content label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-color);
+}
+
+.modal-content input[type="text"],
+.modal-content input[type="date"],
+.modal-content input[type="number"],
+.modal-content select {
+    width: calc(100% - 22px); /* Ajuster pour padding et border */
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background-color: var(--input-bg); /* Utilise la variable */
+    color: var(--text-color);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.modal-content input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.checkbox-group label {
+    display: inline-block;
+    margin-right: 15px;
+    margin-bottom: 10px;
+}
+
+
+.modal-content input[type="text"]:focus,
+.modal-content input[type="date"]:focus,
+.modal-content input[type="number"]:focus,
+.modal-content select:focus {
+    border-color: var(--button-bg);
+    outline: none;
+    box-shadow: 0 0 0 2px var(--input-border-focus); /* Utilise la variable */
+}
+
+
+.close-button {
+    color: var(--text-color);
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: var(--button-hover-bg);
+    text-decoration: none;
+}
+
+.modal-content button {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#cancelModalBtn {
+    background-color: #6c757d;
+    color: white;
+    margin-right: 10px;
+}
+#cancelModalBtn:hover {
+    background-color: #5a6268;
+    transform: translateY(-2px);
+}
+
+#confirmModalBtn {
+    background-color: var(--button-bg);
+    color: white;
+}
+#confirmModalBtn:hover {
+    background-color: var(--button-hover-bg);
+    transform: translateY(-2px);
+}
+
+
+/* Styles pour les toasts */
+#toastsContainer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1002; /* Z-index plus élevé pour s'assurer que les toasts sont au-dessus des modales */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    background-color: var(--toast-info-bg);
+    color: var(--toast-text-color);
+    padding: 12px 18px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out, background-color 0.3s ease;
+    min-width: 250px;
+    text-align: center;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast.success {
+    background-color: var(--toast-success-bg);
+}
+
+.toast.error {
+    background-color: var(--toast-error-bg);
+}
+
+.toast.info {
+    background-color: var(--toast-info-bg);
+}
+
+/* Pied de page */
+footer {
+    margin-top: auto;
+    padding: 15px 20px;
+    text-align: center;
+    background: var(--footer-bg);
+    color: var(--footer-text-color);
+    font-size: 0.9em;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border-top: 1px solid var(--border-color);
+    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Bouton pour basculer le thème (à ajouter dans l'HTML/JS) */
+#themeToggleButton {
+    background-color: var(--button-bg);
+    color: var(--toast-text-color);
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin-top: 15px;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+#themeToggleButton:hover {
+    background-color: var(--button-hover-bg);
+    transform: translateY(-2px);
+}
+
+/* Styles pour la liste des personnes */
+.people-list-container {
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.compact-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.compact-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    background: var(--person-item-bg);
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    font-size: 0.95em;
+    color: var(--text-color);
+}
+
+.compact-list li:hover {
+    background: var(--person-item-hover-bg);
+}
+
+.compact-list li button {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 5px;
+    margin-left: 10px;
+    transition: color 0.2s ease;
+    box-shadow: none;
+}
+
+.compact-list li button:hover {
+    color: #c82333;
+    transform: none;
+}
+
+/* Styles pour les champs de récurrence (télétravail) */
+.recurring-options {
+    margin-top: 15px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+}
+
+.recurring-options h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--text-color);
+}
+
+.day-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.day-checkboxes label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    background: var(--input-bg);
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.day-checkboxes label:has(input:checked) {
+    background-color: var(--button-bg);
+    border-color: var(--button-hover-bg);
+    color: white;
+}
+.day-checkboxes label:has(input:checked) input[type="checkbox"] {
+    accent-color: var(--text-color); /* Pour changer la couleur de la coche */
+}
