@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.35"; // INCEMENTATION : Correction bouton Gérer les évènements + options export + isSameOrAfter
+const APP_VERSION = "v20.36"; // INCEMENTATION : Correction texte indésirable, export simplifié, correction export PDF/PNG
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     dayjs.extend(dayjs_plugin_weekday);
     dayjs.extend(dayjs_plugin_isSameOrBefore);
     dayjs.extend(dayjs_plugin_minMax);
-    dayjs.extend(dayjs_plugin_isSameOrAfter); // AJOUTÉ POUR LA CORRECTION
+    dayjs.extend(dayjs_plugin_isSameOrAfter);
 
     try {
         await openDB(); // Ouvre la base de données au démarrage
@@ -146,7 +146,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addPersonBtn = document.getElementById('addPersonBtn');
     if (addPersonBtn) addPersonBtn.addEventListener('click', showAddPersonModal);
 
-    // MODIFIÉ : Ajout du gestionnaire pour le bouton "Gérer les événements"
     const addPlanningEventBtn = document.getElementById('addPlanningEventBtn');
     if (addPlanningEventBtn) addPlanningEventBtn.addEventListener('click', () => showAddPlanningEventModal());
 
@@ -1013,41 +1012,17 @@ function showExportOptionsModal(exportType) {
         return;
     }
 
-    const personCheckboxesHtml = people.map(person => `
-        <label>
-            <input type="checkbox" name="exportPerson" value="${person.id}" id="exportPerson_${person.id}" checked>
-            ${person.name}
-        </label>
-    `).join('');
-
     // MODIFIÉ : Options d'exportation simplifiées
-    const eventTypeOptionsHtml = `
-        <option value="all">Tous les événements</option>
-        <option value="permanence" selected>Uniquement les permanences</option>
-    `;
-
     const content = `
         <div class="form-group">
-            <label>Sélectionner les personnes :</label>
-            <div class="checkbox-group" id="exportPersonCheckboxes">
-                ${personCheckboxesHtml}
-            </div>
-            <label>
-                <input type="checkbox" id="selectAllPeopleExport" checked onchange="toggleAllPeopleExport(this.checked)"> Sélectionner/Désélectionner tout
-            </label>
-        </div>
-
-        <div class="form-group">
-            <label for="exportEventTypeSelect">Type d'événements à exporter :</label>
-            <select id="exportEventTypeSelect">
-                ${eventTypeOptionsHtml}
-            </select>
+            <label>Type d'export :</label>
+            <p>Exporter toutes les permanences</p>
         </div>
 
         <div class="form-group">
             <label>Options d'export :</label>
             <label style="display: block;">
-                <input type="checkbox" id="pngWhiteBackground" ${exportType === 'pdf' ? 'disabled' : ''}> Fond blanc (pour PNG seulement)
+                <input type="checkbox" id="includeWhiteBackground" checked> Inclure le fond blanc
             </label>
         </div>
     `;
@@ -1059,24 +1034,9 @@ function showExportOptionsModal(exportType) {
     showModal('Options d\'exportation', content, buttons); 
 }
 
-// NOUVEAU : Fonction pour basculer la sélection de toutes les personnes dans la modale d'export
-function toggleAllPeopleExport(checked) {
-    document.querySelectorAll('#exportPersonCheckboxes input[type="checkbox"]').forEach(checkbox => {
-        checkbox.checked = checked;
-    });
-}
-
 // NOUVEAU : Prépare et déclenche l'exportation
 async function prepareAndPerformExport(type) {
-    const selectedPersonIds = Array.from(document.querySelectorAll('#exportPersonCheckboxes input[type="checkbox"]:checked'))
-                               .map(cb => cb.value);
-    const selectedEventType = document.getElementById('exportEventTypeSelect').value;
-    const includeWhiteBackground = document.getElementById('pngWhiteBackground').checked;
-
-    if (selectedPersonIds.length === 0) {
-        showToast("Veuillez sélectionner au moins une personne pour l'exportation.", "error");
-        return;
-    }
+    const includeWhiteBackground = document.getElementById('includeWhiteBackground').checked;
 
     closeModal();
 
@@ -1084,20 +1044,12 @@ async function prepareAndPerformExport(type) {
     const originalView = calendar.view.type;
     const originalDate = calendar.getDate();
 
-    let filteredExportEvents = allCalendarEvents.filter(event => {
-        const isPersonSelected = selectedPersonIds.includes(event.personId);
-        let isEventTypeSelected = false;
-        if (selectedEventType === 'all') {
-            isEventTypeSelected = true;
-        } else if (selectedEventType === 'permanence') { // MODIFIÉ : Se concentre sur les permanences
-            isEventTypeSelected = event.type === 'permanence';
-        }
-        // Suppression des autres conditions de type d'événement
-        return isPersonSelected && isEventTypeSelected;
-    });
+    // Filtre pour n'exporter que les permanences
+    let filteredExportEvents = allCalendarEvents.filter(event => event.type === 'permanence');
 
     if (filteredExportEvents.length === 0) {
-        showToast("Aucun événement correspondant aux critères de sélection pour l'exportation.", "info");
+        showToast("Aucune permanence trouvée pour l'exportation.", "info");
+        // Restaurer l'état original du calendrier
         calendar.setOption('events', originalEventsOption);
         calendar.changeView(originalView);
         calendar.gotoDate(originalDate);
@@ -1108,7 +1060,7 @@ async function prepareAndPerformExport(type) {
     
     try {
         if (type === 'pdf') {
-            await exportPlanningToPdfMultiMonth(originalView, originalDate);
+            await exportPlanningToPdfMultiMonth(originalView, originalDate, includeWhiteBackground);
         } else if (type === 'png') {
             await exportPlanningToPngMultiMonth(originalView, originalDate, includeWhiteBackground);
         }
@@ -1116,6 +1068,7 @@ async function prepareAndPerformExport(type) {
         console.error(`Erreur lors de l'exportation ${type}:`, error);
         showToast(`Erreur lors de l'exportation ${type}.`, 'error');
     } finally {
+        // Restaurer l'état original du calendrier, même en cas d'erreur
         calendar.setOption('events', originalEventsOption);
         calendar.changeView(originalView);
         calendar.gotoDate(originalDate);
@@ -1123,7 +1076,7 @@ async function prepareAndPerformExport(type) {
 }
 
 
-async function exportPlanningToPdfMultiMonth(originalView, originalDate) {
+async function exportPlanningToPdfMultiMonth(originalView, originalDate, includeWhiteBackground) {
     showToast("Génération du PDF en cours...", 'info', 5000);
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl || !calendar) {
@@ -1133,6 +1086,8 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate) {
 
     try {
         calendar.changeView('dayGridMonth');
+        // Attendre que le calendrier se mette à jour dans le DOM
+        await new Promise(resolve => setTimeout(resolve, 500)); // Augmentation du délai
 
         const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
         const pdfPageWidthMm = pdf.internal.pageSize.getWidth();
@@ -1151,13 +1106,14 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate) {
                 pdf.addPage();
             }
             calendar.gotoDate(currentMonth.toDate());
-            await new Promise(resolve => setTimeout(resolve, 100)); // Laisse le temps au calendrier de se rendre
+            // Attendre à nouveau le rendu après chaque gotoDate
+            await new Promise(resolve => setTimeout(resolve, 500)); 
 
             const canvas = await html2canvas(calendarEl, {
                 scale: 2,
                 useCORS: true,
                 logging: false,
-                backgroundColor: null // Pour un fond transparent par défaut
+                backgroundColor: includeWhiteBackground ? '#FFFFFF' : null 
             });
 
             const imgData = canvas.toDataURL('image/png');
@@ -1198,7 +1154,8 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate) {
 
     } catch (error) {
         console.error('Erreur lors de l\'exportation PDF multi-mois :', error);
-        throw error; // Propage l'erreur pour le bloc finally de prepareAndPerformExport
+        // Ne pas appeler showToast ici pour éviter le doublon avec le finally de prepareAndPerformExport
+        throw error;
     }
 }
 
@@ -1212,19 +1169,22 @@ async function exportPlanningToPngMultiMonth(originalView, originalDate, include
 
     try {
         calendar.changeView('dayGridMonth');
+        // Attendre que le calendrier se mette à jour dans le DOM
+        await new Promise(resolve => setTimeout(resolve, 500)); // Augmentation du délai
 
         let currentMonth = dayjs(originalDate).startOf('month');
         const numberOfMonthsToExport = 2; // Exportation sur 2 mois
 
         for (let i = 0; i < numberOfMonthsToExport; i++) {
             calendar.gotoDate(currentMonth.toDate());
-            await new Promise(resolve => setTimeout(resolve, 100)); // Laisse le temps au calendrier de se rendre
+            // Attendre à nouveau le rendu après chaque gotoDate
+            await new Promise(resolve => setTimeout(resolve, 500)); 
 
             const canvas = await html2canvas(calendarEl, {
                 scale: 2,
                 useCORS: true,
                 logging: false,
-                backgroundColor: includeWhiteBackground ? '#FFFFFF' : null // Fond blanc si demandé, sinon transparent
+                backgroundColor: includeWhiteBackground ? '#FFFFFF' : null 
             });
 
             const imgUrl = canvas.toDataURL('image/png');
@@ -1242,7 +1202,8 @@ async function exportPlanningToPngMultiMonth(originalView, originalDate, include
 
     } catch (error) {
         console.error('Erreur lors de l\'exportation PNG multi-mois :', error);
-        throw error; // Propage l'erreur pour le bloc finally de prepareAndPerformExport
+        // Ne pas appeler showToast ici pour éviter le doublon avec le finally de prepareAndPerformExport
+        throw error;
     }
 }
 
