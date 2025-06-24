@@ -6,7 +6,7 @@
     <title>The Electri-Cal</title>
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css' rel='stylesheet' />
     <link rel="stylesheet" href="style.css">
-</head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"> </head>
 <body>
     <header>
         <h1>The Electri-Cal: Gestion du Planning de Permanence Électrique</h1>
@@ -16,8 +16,7 @@
         <aside class="sidebar">
             <h2>Actions</h2>
             <button id="addPersonBtn">Ajouter une personne</button>
-            <button id="addPlanningEventBtn">Gérer les Présences/Absences</button>
-            <button id="exportPdfBtn">Exporter PDF</button>
+            <button id="addPlanningEventBtn" onclick="showAddPlanningEventModal('', '')">Gérer les Présences/Absences</button> <button id="exportPdfBtn">Exporter PDF</button>
             <button id="exportPngBtn">Exporter PNG</button>
             <button id="exportJsonBtn">Exporter JSON</button>
             <button id="importJsonBtn">Importer JSON</button>
@@ -49,7 +48,8 @@
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/customParseFormat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isBetween.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/weekday.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrBefore.js"></script> <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrBefore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
