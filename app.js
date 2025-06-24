@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.43"; // INCEMENTATION : Fix CSS sidebar buttons + global buttons, Fix PDF (Lun-Ven, Locale)
+const APP_VERSION = "v20.44"; // INCEMENTATION : Fix PDF (table intermédiaire, toast, L-V, locale) + Largeur app
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -21,9 +21,10 @@ const EVENT_COLORS = {
 
 // --- IndexedDB Configuration ---
 const DB_NAME = 'ElectriCalDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // INCEMENTATION : Nouvelle version pour ajouter le STORE_PDF_GENERATION
 const STORE_PEOPLE = 'people';
 const STORE_EVENTS = 'events';
+const STORE_PDF_GENERATION = 'pdfData'; // Nouveau store pour les données PDF temporaires
 let db;
 
 // Fonction pour ouvrir la base de données IndexedDB
@@ -38,6 +39,10 @@ function openDB() {
             }
             if (!db.objectStoreNames.contains(STORE_EVENTS)) {
                 db.createObjectStore(STORE_EVENTS, { keyPath: 'id' });
+            }
+            // Créer le nouveau store pour les données PDF
+            if (!db.objectStoreNames.contains(STORE_PDF_GENERATION)) {
+                db.createObjectStore(STORE_PDF_GENERATION, { keyPath: 'date' });
             }
         };
 
@@ -183,7 +188,7 @@ function toggleTheme() {
 // Gestion des Toasts (notifications)
 let currentToast = null; // Pour gérer un seul toast à la fois
 
-function showToast(message, type = 'info', duration = 3000) {
+function showToast(message, type = 'info', duration = 3000, isLoading = false) {
     const toastsContainer = document.getElementById('toastsContainer');
     if (!toastsContainer) return;
 
@@ -195,7 +200,10 @@ function showToast(message, type = 'info', duration = 3000) {
 
     const toast = document.createElement('div');
     toast.classList.add('toast', type);
-    toast.textContent = message;
+    toast.innerHTML = `
+        ${isLoading ? '<i class="fas fa-hourglass-half fa-spin toast-spinner"></i>' : ''}
+        <span>${message}</span>
+    `;
 
     toastsContainer.appendChild(toast);
     currentToast = toast;
@@ -1056,14 +1064,15 @@ function showExportOptionsModal(exportType) {
     `;
 
     const buttons = [];
-    buttons.push({ text: 'Générer le PDF', onclick: `generatePermanencePdfTable()`, class: 'button-primary' });
+    // Le bouton appelle maintenant la nouvelle fonction qui prépare les données avant de générer le PDF
+    buttons.push({ text: 'Générer le PDF', onclick: `preparePdfDataAndGeneratePdf()`, class: 'button-primary' });
     buttons.push({ text: 'Annuler', onclick: 'closeModal()', class: 'button-secondary' });
 
     showModal('Exporter le planning des permanences (PDF)', content, buttons); 
 }
 
-// MODIFIÉ : Fonction pour générer le PDF du planning des permanences en tableau
-function generatePermanencePdfTable() {
+// NOUVELLE FONCTION : Prépare les données pour le PDF dans IndexedDB avant de générer le PDF
+async function preparePdfDataAndGeneratePdf() {
     closeModal(); // Ferme la modale
 
     const startDateStr = document.getElementById('pdfExportStartDate').value;
@@ -1077,6 +1086,83 @@ function generatePermanencePdfTable() {
         return;
     }
 
+    showToast("Préparation du PDF en cours... Veuillez patienter. ⏳", "info", 0, true); // Toast non-dissipable avec spinner
+
+    try {
+        await clearStore(STORE_PDF_GENERATION); // Nettoie le store temporaire
+
+        // Agrégation des données par jour (Lun-Ven uniquement, dans la période d'export)
+        const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: new Set(), permanence_backup: new Set() } }
+        let tempDate = dayjs(startDate);
+        while (tempDate.isSameOrBefore(endDate, 'day')) {
+            // Collecter les données uniquement pour les jours de semaine (Lundi=1 à Vendredi=5)
+            // Day.js .weekday() par défaut: Dimanche=0, Lundi=1 ... Samedi=6
+            if (tempDate.weekday() >= 1 && tempDate.weekday() <= 5) {
+                dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), permanence_backup: new Set() };
+            }
+            tempDate = tempDate.add(1, 'day');
+        }
+
+        allCalendarEvents.forEach(event => {
+            if (event.type !== 'permanence' && event.type !== 'permanence_backup') {
+                return;
+            }
+
+            const person = people.find(p => p.id === event.personId);
+            if (!person) return; // Personne introuvable
+
+            const eventStartDate = dayjs(event.start);
+            // FullCalendar end date is exclusive, subtract 1 day for inclusive comparison
+            const eventEndDate = dayjs(event.end).subtract(1, 'day'); 
+
+            let day = dayjs.max(eventStartDate, startDate);
+            let loopEndDate = dayjs.min(eventEndDate, endDate);
+
+            while (day.isSameOrBefore(loopEndDate, 'day')) {
+                // Ajouter les événements uniquement pour les jours de semaine (Lundi=1 à Vendredi=5)
+                if (day.weekday() >= 1 && day.weekday() <= 5) {
+                    const dateKey = day.format('YYYY-MM-DD');
+                    if (dailyPermanences[dateKey]) { // S'assurer que le jour est dans la période d'export collectée
+                        if (event.type === 'permanence') {
+                            dailyPermanences[dateKey].permanence.add(person.name);
+                        } else if (event.type === 'permanence_backup') {
+                            dailyPermanences[dateKey].permanence_backup.add(person.name);
+                        }
+                    }
+                }
+                day = day.add(1, 'day');
+            }
+        });
+
+        // Stocker les données formatées dans le store temporaire
+        const orderedDates = Object.keys(dailyPermanences).sort();
+        for (const dateKey of orderedDates) {
+            const dayData = dailyPermanences[dateKey];
+            const dayjsObj = dayjs(dateKey);
+            const formattedDayOfWeek = dayjsObj.locale('fr').format('ddd DD/MM'); // Ex: "Lun 24/06"
+
+            await putItem(STORE_PDF_GENERATION, {
+                date: dateKey, // KeyPath
+                dayOfWeekFr: formattedDayOfWeek,
+                permanenceNames: Array.from(dayData.permanence).join(', '),
+                backupNames: Array.from(dayData.permanence_backup).join(', ')
+            });
+        }
+        
+        // Une fois les données préparées, générer le PDF
+        await generatePermanencePdfTable(startDate, endDate);
+
+    } catch (error) {
+        console.error("Erreur lors de la préparation des données PDF:", error);
+        showToast("Erreur lors de la préparation du PDF.", "error", 5000);
+    } finally {
+        hideToast(); // Masque le toast de chargement
+    }
+}
+
+// MODIFIÉ : Fonction pour générer le PDF du planning des permanences en tableau
+// Elle lit maintenant les données pré-formatées de IndexedDB
+async function generatePermanencePdfTable(startDate, endDate) {
     if (typeof jspdf === 'undefined') {
         showToast("La bibliothèque jsPDF n'est pas chargée. L'export PDF est impossible.", "error", 5000);
         console.error("jsPDF is not loaded. Make sure the script is included.");
@@ -1102,6 +1188,7 @@ function generatePermanencePdfTable() {
     const PDF_DEFAULT_TEXT_COLOR = '#333333';
 
     let currentY = margin;
+    let pageNum = 1;
 
     // Fonction pour ajouter le titre de la page et les footers
     // `totalPages` sera mis à jour lors du deuxième passage
@@ -1121,63 +1208,78 @@ function generatePermanencePdfTable() {
         return margin + 15; // Retourne la position Y après l'en-tête
     };
 
-    console.log("Day.js current locale at PDF generation start:", dayjs.locale()); // Should be 'fr'
+    console.log("Day.js current locale at PDF generation start:", dayjs.locale());
 
-    // Agrégation des données par jour (Lun-Ven uniquement, dans la période d'export)
-    const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: new Set(), permanence_backup: new Set() } }
-    let tempDate = dayjs(startDate);
-    while (tempDate.isSameOrBefore(endDate, 'day')) {
-        // Collecter les données uniquement pour les jours de semaine (Lundi=1 à Vendredi=5)
-        if (tempDate.weekday() >= 1 && tempDate.weekday() <= 5) {
-            dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), permanence_backup: new Set() };
-        }
-        tempDate = tempDate.add(1, 'day');
+    // Lire les données pré-formatées depuis IndexedDB
+    const pdfData = await getAllItems(STORE_PDF_GENERATION);
+
+    // Groupement des données par semaine, en s'assurant que chaque "semaine" a 5 jours (même vides si hors période)
+    const weeksData = [];
+    let currentWeekDays = [];
+    let currentWeekStart = null;
+
+    // Assurer que le premier jour est bien un Lundi
+    const firstPdfDataDay = pdfData.length > 0 ? dayjs(pdfData[0].date) : null;
+    let initialWeekIter = firstPdfDataDay ? dayjs(firstPdfDataDay).startOf('week', { weekStart: 1 }) : null;
+
+    if (!initialWeekIter) {
+        showToast("Aucune donnée de permanence à exporter pour la période sélectionnée (jours de semaine).", "info", 5000);
+        return;
     }
 
-    allCalendarEvents.forEach(event => {
-        if (event.type !== 'permanence' && event.type !== 'permanence_backup') {
-            return;
-        }
+    let dataIndex = 0;
+    while (initialWeekIter.isSameOrBefore(dayjs(endDate).endOf('week', { weekStart: 1 }), 'day')) {
+        currentWeekDays = [];
+        let weekContainsActualData = false;
 
-        const person = people.find(p => p.id === event.personId);
-        if (!person) return; // Personne introuvable
+        for (let i = 0; i < 5; i++) { // Lundi (0) à Vendredi (4) dans cette itération logique de 5 jours
+            const currentDay = initialWeekIter.add(i, 'day');
+            const dateKey = currentDay.format('YYYY-MM-DD');
+            
+            let dayPdfData = {
+                date: dateKey,
+                dayOfWeekFr: currentDay.locale('fr').format('ddd DD/MM'),
+                permanenceNames: '',
+                backupNames: ''
+            };
 
-        const eventStartDate = dayjs(event.start);
-        const eventEndDate = dayjs(event.end).subtract(1, 'day'); // FullCalendar end date is exclusive
+            // Chercher les données pré-préparées pour ce jour
+            const foundData = pdfData.find(d => d.date === dateKey);
 
-        let day = dayjs.max(eventStartDate, startDate);
-        let loopEndDate = dayjs.min(eventEndDate, endDate);
-
-        while (day.isSameOrBefore(loopEndDate, 'day')) {
-            // Ajouter les événements uniquement pour les jours de semaine (Lundi=1 à Vendredi=5)
-            if (day.weekday() >= 1 && day.weekday() <= 5) {
-                const dateKey = day.format('YYYY-MM-DD');
-                if (dailyPermanences[dateKey]) { // S'assurer que le jour est dans la période d'export collectée
-                    if (event.type === 'permanence') {
-                        dailyPermanences[dateKey].permanence.add(person.name);
-                    } else if (event.type === 'permanence_backup') {
-                        dailyPermanences[dateKey].permanence_backup.add(person.name);
+            if (foundData) {
+                // S'assurer que le jour est dans la période d'export *originelle*
+                // Les données en DB sont déjà filtrées Lun-Ven, mais elles pourraient être hors de la plage startDate/endDate
+                if (currentDay.isBetween(startDate, endDate, 'day', '[]')) {
+                    dayPdfData.permanenceNames = foundData.permanenceNames;
+                    dayPdfData.backupNames = foundData.backupNames;
+                    if (foundData.permanenceNames || foundData.backupNames) {
+                        weekContainsActualData = true; // Cette semaine contient des données réelles dans la plage
                     }
                 }
             }
-            day = day.add(1, 'day');
+            currentWeekDays.push(dayPdfData);
         }
-    });
+        
+        // Ajouter la semaine si elle contient des données réelles OU si elle chevauche la période de l'utilisateur
+        const isStartWeekOfPeriod = initialWeekIter.isSame(startDate, 'week');
+        const isEndWeekOfPeriod = initialWeekIter.isSame(endDate, 'week');
 
-    // --- Rendu du contenu dans le PDF (Premier passage pour calculer les pages) ---
-    pageNum = 1;
+        if (weekContainsActualData || isStartWeekOfPeriod || isEndWeekOfPeriod) {
+            weeksData.push(currentWeekDays);
+        }
+        
+        initialWeekIter = initialWeekIter.add(1, 'week');
+    }
+
+    if (weeksData.length === 0) {
+        showToast("Aucune donnée de permanence à exporter pour la période sélectionnée (jours de semaine).", "info", 5000);
+        return;
+    }
+
+    // --- Rendu du contenu dans le PDF ---
     currentY = addPageLayout(doc, pageNum, 0); // Dessine l'en-tête de la première page
 
-    // Début de l'itération par semaine
-    // Force le LUNDI (1) comme début de semaine pour garantir Lun-Ven dans la boucle
-    let iterWeek = dayjs(startDate).startOf('week', { weekStart: 1 });
-    const endOfRangeWeek = dayjs(endDate).endOf('week', { weekStart: 1 }); // Aller jusqu'à la fin de la semaine de endDate
-
-    // Itère semaine par semaine jusqu'à ce que le Lundi de la semaine dépasse la fin de la période
-    while (iterWeek.isSameOrBefore(endOfRangeWeek, 'day')) {
-        
-        console.log("Processing week starting:", iterWeek.format('YYYY-MM-DD'));
-
+    for (const week of weeksData) {
         // Gérer les sauts de page avant de dessiner la semaine actuelle
         if (currentY + weekBlockHeight + weekSpacing > pageHeight - margin - footerHeight) {
             doc.addPage();
@@ -1187,92 +1289,38 @@ function generatePermanencePdfTable() {
         
         let tempX; // Position X pour le dessin des cellules
 
-        // Préparer les données pour les 5 jours de la semaine à rendre
-        const renderedWeekDays = [];
-        const renderedPermanence = [];
-        const renderedBackup = [];
-        let weekContainsDataForPeriod = false; // Indicateur pour savoir si la semaine a des données dans la plage de l'utilisateur
+        // --- Ligne des Dates (avec fond coloré) ---
+        tempX = margin;
+        doc.setFillColor(PDF_HEADER_BG_COLOR);
+        doc.rect(margin, currentY, pageWidth - 2 * margin, lineHeight, 'F'); // Dessine le fond
+        doc.setFontSize(9);
+        doc.setTextColor(PDF_DEFAULT_TEXT_COLOR); // Texte des dates
+        week.forEach(dayData => {
+            doc.text(dayData.dayOfWeekFr, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
+            tempX += colWidth;
+        });
+        currentY += lineHeight;
 
-        for (let i = 0; i < 5; i++) { // Toujours 5 jours : Lundi à Vendredi (0=Lundi, 1=Mardi, ..., 4=Vendredi)
-            const currentDay = iterWeek.add(i, 'day');
-            const dateKey = currentDay.format('YYYY-MM-DD');
+        // --- Ligne des Permanences ---
+        tempX = margin;
+        doc.setFontSize(10);
+        doc.setTextColor(PDF_PERMANENCE_TEXT_COLOR); // Texte des permanences
+        week.forEach(dayData => {
+            doc.text(dayData.permanenceNames, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
+            tempX += colWidth;
+        });
+        currentY += lineHeight;
 
-            // --- DEBUT DES LOGS DE DEBUG POUR LE PDF ---
-            console.log(`  Day ${i+1}: ${currentDay.format('dddd DD/MM/YYYY')} (Weekday: ${currentDay.weekday()})`); // 'dddd' pour nom complet
-            console.log(`    Is between start/end period: ${currentDay.isBetween(startDate, endDate, 'day', '[]')}`);
-            // --- FIN DES LOGS DE DEBUG POUR LE PDF ---
+        // --- Ligne des Permanences Backup ---
+        tempX = margin;
+        doc.setTextColor(PDF_BACKUP_TEXT_COLOR); // Texte des backups
+        week.forEach(dayData => {
+            doc.text(dayData.backupNames, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
+            tempX += colWidth;
+        });
+        currentY += lineHeight;
 
-            // En-tête des jours : toujours affiché pour Lun-Ven de la semaine en cours
-            const dayHeaderText = currentDay.locale('fr').format('ddd DD/MM'); // 'ddd' pour Lun, Mar, etc.
-            renderedWeekDays.push(dayHeaderText);
-            console.log(`    Rendered Day Text: ${dayHeaderText}`); // Log le texte formaté
-
-            // Récupérer les données de permanence si le jour est dans la période sélectionnée
-            if (currentDay.isBetween(startDate, endDate, 'day', '[]')) {
-                if (dailyPermanences[dateKey]) { // Si des données ont été collectées pour ce jour de semaine
-                    const perms = Array.from(dailyPermanences[dateKey].permanence).join(', ');
-                    const backups = Array.from(dailyPermanences[dateKey].permanence_backup).join(', ');
-                    renderedPermanence.push(perms);
-                    renderedBackup.push(backups);
-                    if (perms || backups) weekContainsDataForPeriod = true; // Marque la semaine si elle contient des données réelles
-                } else {
-                    renderedPermanence.push('');
-                    renderedBackup.push('');
-                }
-            } else {
-                // Jour hors de la période d'export sélectionnée par l'utilisateur, pas de données
-                renderedPermanence.push('');
-                renderedBackup.push('');
-            }
-            console.log(`    dailyPermanences[${dateKey}]:`, dailyPermanences[dateKey] ? Array.from(dailyPermanences[dateKey].permanence) : 'N/A', dailyPermanences[dateKey] ? Array.from(dailyPermanences[dateKey].permanence_backup) : 'N/A');
-        }
-        
-        console.log("  Week Headers to render:", renderedWeekDays);
-        console.log("  Permanence Data for week:", renderedPermanence);
-        console.log("  Backup Data for week:", renderedBackup);
-
-        // Dessiner la semaine seulement si elle contient des données pour la période sélectionnée,
-        // ou si c'est la semaine de début/fin de la période.
-        const isStartWeekOfPeriod = iterWeek.isSame(startDate, 'week');
-        const isEndWeekOfPeriod = iterWeek.isSame(endDate, 'week');
-
-        if (weekContainsDataForPeriod || isStartWeekOfPeriod || isEndWeekOfPeriod) {
-            // --- Ligne des Dates (avec fond coloré) ---
-            tempX = margin;
-            doc.setFillColor(PDF_HEADER_BG_COLOR);
-            doc.rect(margin, currentY, pageWidth - 2 * margin, lineHeight, 'F'); // Dessine le fond
-            doc.setFontSize(9);
-            doc.setTextColor(PDF_DEFAULT_TEXT_COLOR); // Texte des dates
-            renderedWeekDays.forEach(dateText => {
-                doc.text(dateText, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
-                tempX += colWidth;
-            });
-            currentY += lineHeight;
-
-            // --- Ligne des Permanences ---
-            tempX = margin;
-            doc.setFontSize(10);
-            doc.setTextColor(PDF_PERMANENCE_TEXT_COLOR); // Texte des permanences
-            renderedPermanence.forEach(permanenceText => {
-                doc.text(permanenceText, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
-                tempX += colWidth;
-            });
-            currentY += lineHeight;
-
-            // --- Ligne des Permanences Backup ---
-            tempX = margin;
-            doc.setTextColor(PDF_BACKUP_TEXT_COLOR); // Texte des backups
-            renderedBackup.forEach(backupText => {
-                doc.text(backupText, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
-                tempX += colWidth;
-            });
-            currentY += lineHeight;
-
-            currentY += weekSpacing; // Espacement après la semaine
-        }
-        
-        iterWeek = iterWeek.add(1, 'week'); // Passer à la semaine suivante
-        console.log("  Week rendered, currentY:", currentY);
+        currentY += weekSpacing; // Espacement après la semaine
     }
 
     // --- Deuxième passage pour ajouter la pagination et l'horodatage corrects ---
