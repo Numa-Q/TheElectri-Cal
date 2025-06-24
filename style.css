@@ -150,34 +150,30 @@ main {
 }
 
 .person-actions button {
-    /* MODIFIED: Added default background and border for better visibility */
-    background-color: rgba(0, 0, 0, 0.08); /* More visible subtle background */
-    border: 1px solid rgba(0, 0, 0, 0.1); /* More visible subtle border */
-    color: var(--text-color); /* Uses text color for icons */
+    /* MODIFIED: Align with main button styling */
+    background-color: var(--button-bg); /* Orange color */
+    border: 1px solid var(--button-bg); /* Matching border */
+    color: white; /* White icon color */
     cursor: pointer;
     margin-left: 5px;
     font-size: 0.9em;
     padding: 5px;
     border-radius: 5px;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
     display: inline-flex; /* Ensure flex behavior for centering icon */
     align-items: center;
     justify-content: center;
 }
 
-.dark-mode .person-actions button {
-    background-color: rgba(255, 255, 255, 0.08); /* More visible subtle background in dark mode */
-    border: 1px solid rgba(255, 255, 255, 0.1); /* More visible subtle border in dark mode */
-}
-
 .person-actions button:hover {
     background-color: var(--button-hover-bg);
-    color: white;
-    border-color: var(--button-hover-bg); /* Match border color on hover */
+    border-color: var(--button-hover-bg);
+    transform: translateY(-1px); /* Slight lift effect on hover */
 }
+
 /* Ensure the icon itself inherits color */
 .person-actions button i {
-    color: inherit; /* Ensure icon color matches button text color */
+    color: inherit; /* Ensure icon color matches button text color (white) */
 }
 
 
