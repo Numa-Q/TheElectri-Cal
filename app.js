@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.32"; // INCEMENTATION : Correction Day.js plugin minMax + Correction Day.js max/min + SyntaxError général + CDN FullCalendar
+const APP_VERSION = "v20.33"; // INCEMENTATION : Ajout Font Awesome + CDN FullCalendar corrigés
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -113,7 +113,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     dayjs.extend(dayjs_plugin_isBetween);
     dayjs.extend(dayjs_plugin_weekday);
     dayjs.extend(dayjs_plugin_isSameOrBefore);
-    // CORRECTION ICI : maxMin remplacé par minMax
     dayjs.extend(dayjs_plugin_minMax); 
 
     try {
@@ -160,7 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (importJsonBtn) importJsonBtn.addEventListener('click', showImportModal);
 
     const showStatsBtn = document.getElementById('showStatsBtn');
-    if (showStatsBtn) showStatsBtn.addEventListener('click', showStatsModal); // <-- Appel de la nouvelle fonction showStatsModal
+    if (showStatsBtn) showStatsBtn.addEventListener('click', showStatsModal);
 });
 
 // Fonctions utilitaires pour le thème
@@ -260,7 +259,6 @@ function createAndShowModal(title, content, primaryButtonText, primaryButtonActi
 // Fonctions pour créer des éléments de formulaire
 function createInput(id, label, type = 'text', value = '', placeholder = '', required = false, dataAttrs = {}) {
     const requiredAttr = required ? 'required' : '';
-    // Correction de la SyntaxError ici:
     const dataAttributesString = Object.keys(dataAttrs).map(key => `data-${key}="${dataAttrs[key]}"`).join(' ');
     return `
         <div class="form-group">
@@ -1297,8 +1295,8 @@ function generateAndDisplayStats() {
 
         // Check if event overlaps with the selected stats period
         if (eventStartDate.isSameOrBefore(endDate, 'day') && eventEndDate.isSameOrAfter(startDate, 'day')) {
-            const overlapStart = dayjs.max(eventStartDate, startDate); // Utilisez dayjs.max() du plugin
-            const overlapEnd = dayjs.min(eventEndDate, endDate);     // Utilisez dayjs.min() du plugin
+            const overlapStart = dayjs.max(eventStartDate, startDate);
+            const overlapEnd = dayjs.min(eventEndDate, endDate);
 
             let currentDay = overlapStart;
             while (currentDay.isSameOrBefore(overlapEnd, 'day')) {
