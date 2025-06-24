@@ -1,230 +1,178 @@
-/* General Body and Font Styles */
+/* style.css */
+
+/* Réinitialisation de base pour inclure padding et border dans la largeur/hauteur */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* Variables CSS pour les couleurs du thème clair */
+:root {
+    --bg-gradient-start: #fceabb; /* Couleur chaude douce */
+    --bg-gradient-end: #f8b500;   /* Couleur chaude plus intense */
+    --main-bg-color: rgba(255, 255, 255, 0.4); /* Fond glassmorphism clair */
+    --border-color: rgba(255, 255, 255, 0.3);
+    --text-color: #333;
+    --header-bg: #e9a600; /* Une couleur qui s'harmonise avec le dégradé */
+    --button-bg: #ff7f50; /* Corail, pour un bouton chaleureux */
+    --button-hover-bg: #e6673d;
+    --sidebar-text-color: #444;
+    --modal-bg: rgba(255, 255, 255, 0.9);
+    --toast-info-bg: #17a2b8;
+    --toast-success-bg: #28a745;
+    --toast-error-bg: #dc3545;
+    --toast-text-color: white;
+    --footer-bg: rgba(255, 255, 255, 0.2);
+    --fullcalendar-header-bg: #f2f2f2;
+    --fullcalendar-day-bg: #ffffff;
+    --fullcalendar-day-other-bg: #fafafa;
+    --fullcalendar-today-bg: #fffbe6; /* Jaune très pâle */
+}
+
+/* Variables CSS pour les couleurs du thème sombre */
+body.dark-mode {
+    --bg-gradient-start: #23272a; /* Bleu très foncé pour un fond sombre */
+    --bg-gradient-end: #1a1e20;   /* Encore plus foncé */
+    --main-bg-color: rgba(0, 0, 0, 0.4); /* Fond glassmorphism sombre */
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-color: #e0e0e0; /* Texte clair */
+    --header-bg: #1e2124; /* Très foncé pour le header */
+    --button-bg: #5a6a7c; /* Bleu-gris discret */
+    --button-hover-bg: #4a5766;
+    --sidebar-text-color: #c0c0c0;
+    --modal-bg: rgba(0, 0, 0, 0.8);
+    /* Les toasts gardent des couleurs distinctes */
+    --fullcalendar-header-bg: #36393f;
+    --fullcalendar-day-bg: #2f3136;
+    --fullcalendar-day-other-bg: #282b30;
+    --fullcalendar-today-bg: #3e3e4f; /* Bleu-gris plus sombre */
+}
+
+
+/* Styles de base du corps de la page */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f4f7f6; /* Light gray background */
-    color: #333; /* Dark text for light theme */
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    color: var(--text-color);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background-color 0.3s ease, color 0.3s ease; /* Transition pour le changement de thème */
+    line-height: 1.6;
+}
+
+/* Conteneur principal */
+#app-container {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Dark Mode Styles */
-body.dark-mode {
-    background-color: #2c2f33; /* Darker background */
-    color: #f6f7f9; /* Light text for dark theme */
-}
-
-body.dark-mode .container,
-body.dark-mode .modal-content,
-body.dark-mode #peopleList li,
-body.dark-mode input,
-body.dark-mode select,
-body.dark-mode textarea {
-    background-color: #3f434a; /* Darker element background */
-    color: #f6f7f9;
-    border-color: #555;
-}
-
-body.dark-mode .header,
-body.dark-mode .footer {
-    background-color: #23272a; /* Even darker for header/footer */
-    color: #f6f7f9;
-}
-
-body.dark-mode .button,
-body.dark-mode button,
-body.dark-mode .button-primary {
-    background-color: #7289da; /* Discord blue-ish */
-    color: #fff;
-}
-
-body.dark-mode .button-secondary {
-    background-color: #4f545c;
-    color: #f6f7f9;
-}
-
-body.dark-mode .button-danger {
-    background-color: #cc3333;
-    color: #fff;
-}
-
-body.dark-mode .button:hover,
-body.dark-mode button:hover,
-body.dark-mode .button-primary:hover {
-    background-color: #5b6eae;
-}
-
-body.dark-mode .button-secondary:hover {
-    background-color: #6a717e;
-}
-
-body.dark-mode .button-danger:hover {
-    background-color: #a02a2a;
-}
-
-body.dark-mode .modal-header {
-    background-color: #4f545c;
-    border-bottom: 1px solid #555;
-}
-
-body.dark-mode .modal-footer {
-    background-color: #4f545c;
-    border-top: 1px solid #555;
-}
-
-body.dark-mode .person-hidden {
-    opacity: 0.6;
-    background-color: #36393f;
-}
-
-body.dark-mode .fc .fc-button-primary {
-    background-color: #7289da;
-    border-color: #7289da;
-    color: #fff;
-}
-
-body.dark-mode .fc .fc-button-primary:hover {
-    background-color: #5b6eae;
-    border-color: #5b6eae;
-}
-
-body.dark-mode .fc .fc-button-primary:not(:disabled).fc-button-active {
-    background-color: #5b6eae;
-    border-color: #5b6eae;
-}
-
-body.dark-mode .fc-toolbar-title {
-    color: #f6f7f9;
-}
-
-body.dark-mode .fc-col-header-cell {
-    background-color: #4f545c;
-    color: #f6f7f9;
-    border-color: #555;
-}
-
-body.dark-mode .fc-daygrid-day {
-    background-color: #3f434a;
-    border-color: #555;
-}
-
-body.dark-mode .fc-day-other {
-    background-color: #36393f;
-    opacity: 0.7;
-}
-
-body.dark-mode .fc-day-today {
-    background-color: #4a4e55 !important;
-}
-
-body.dark-mode .fc-event {
-    background-color: #5a70af !important;
-    border-color: #5a70af !important;
-    color: #fff !important;
-}
-
-body.dark-mode .fc-event-title {
-    color: #fff !important;
-}
-
-body.dark-mode .stats-table,
-body.dark-mode .stats-table th,
-body.dark-mode .stats-table td {
-    border-color: #555;
-    color: #f6f7f9;
-}
-
-body.dark-mode .stats-table thead th {
-    background-color: #4f545c;
-}
-
-body.dark-mode .stats-table tbody tr:nth-child(odd) {
-    background-color: #3f434a;
-}
-
-body.dark-mode .stats-table tbody tr:nth-child(even) {
-    background-color: #36393f;
-}
-
-
-/* Header Styles */
+/* En-tête */
 .header {
-    background-color: #1a73e8; /* Google Blue */
+    background-color: var(--header-bg);
     color: white;
-    padding: 15px 20px;
+    padding: 15px 25px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    flex-wrap: wrap; /* Permet aux éléments de passer à la ligne */
+    gap: 10px; /* Espace entre les éléments de l'en-tête */
 }
 
 .header h1 {
     margin: 0;
     font-size: 1.8em;
+    font-weight: 600;
 }
 
 .header .app-info {
-    font-size: 0.8em;
-    opacity: 0.8;
-    margin-left: 15px;
+    font-size: 0.85em;
+    opacity: 0.9;
+    margin-left: 20px;
+    white-space: nowrap; /* Empêche le retour à la ligne */
 }
 
 .header .action-buttons {
     display: flex;
     gap: 10px;
+    flex-wrap: wrap; /* Permet aux boutons de passer à la ligne */
+    margin-left: auto; /* Aligne les boutons à droite */
 }
 
-/* Main Content Layout */
-.main-content {
+/* Contenu principal (sidebar + calendrier) */
+main {
+    flex-grow: 1; /* Permet au contenu principal de prendre l'espace disponible */
     display: flex;
-    flex-grow: 1;
     padding: 20px;
     gap: 20px;
-    max-width: 1400px;
+    max-width: 1500px; /* Largeur maximale pour le contenu */
     width: 100%;
-    margin: 20px auto;
+    margin: 20px auto; /* Centre le contenu */
 }
 
+/* Sidebar */
 .sidebar {
     flex: 1;
-    min-width: 250px;
-    max-width: 300px;
-    background-color: #ffffff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    min-width: 280px;
+    max-width: 350px;
+    background-color: var(--main-bg-color);
+    backdrop-filter: blur(10px); /* Effet de flou glassmorphism */
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 20px;
+    color: var(--sidebar-text-color);
 }
 
-.calendar-section {
-    flex: 3;
-    background-color: #ffffff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    min-height: 600px; /* Ensure calendar has enough space */
-}
-
-/* Sidebar Elements */
 .sidebar h2 {
-    color: #1a73e8;
+    color: var(--header-bg);
     margin-top: 0;
-    font-size: 1.5em;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 10px;
+    font-size: 1.6em;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 12px;
+    margin-bottom: 15px;
 }
 
 .person-list-container {
     flex-grow: 1;
-    overflow-y: auto;
-    max-height: calc(100vh - 300px); /* Adjust based on header/footer/other elements */
-    padding-right: 5px; /* For scrollbar space */
+    overflow-y: auto; /* Rend la liste des personnes scrollable si elle dépasse */
+    max-height: calc(100vh - 250px); /* Ajuste la hauteur max de la liste */
+    padding-right: 8px; /* Pour éviter que la scrollbar ne cache le contenu */
 }
+
+/* Scrollbar personnalisée */
+.person-list-container::-webkit-scrollbar,
+.modal-content::-webkit-scrollbar,
+.stats-table-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.person-list-container::-webkit-scrollbar-track,
+.modal-content::-webkit-scrollbar-track,
+.stats-table-container::-webkit-scrollbar-track {
+    background: var(--border-color); /* Couleur de fond de la piste */
+    border-radius: 10px;
+}
+
+.person-list-container::-webkit-scrollbar-thumb,
+.modal-content::-webkit-scrollbar-thumb,
+.stats-table-container::-webkit-scrollbar-thumb {
+    background: var(--button-bg); /* Couleur du "pouce" de la scrollbar */
+    border-radius: 10px;
+}
+
+.person-list-container::-webkit-scrollbar-thumb:hover,
+.modal-content::-webkit-scrollbar-thumb:hover,
+.stats-table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--button-hover-bg);
+}
+
 
 #peopleList {
     list-style: none;
@@ -236,81 +184,117 @@ body.dark-mode .stats-table tbody tr:nth-child(even) {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid #eee;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.2s ease;
 }
 
 #peopleList li:last-child {
     border-bottom: none;
 }
 
+#peopleList li:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+}
+
+.dark-mode #peopleList li:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
 #peopleList li span {
     flex-grow: 1;
-    font-weight: bold;
+    font-weight: 500;
+}
+
+.person-actions {
+    display: flex;
+    gap: 5px;
 }
 
 .person-actions button {
     background: none;
     border: none;
-    color: #666;
+    color: var(--sidebar-text-color);
     cursor: pointer;
-    font-size: 1em;
-    margin-left: 8px;
-    padding: 5px;
-    border-radius: 4px;
+    font-size: 1.1em;
+    padding: 8px;
+    border-radius: 6px;
     transition: color 0.2s ease, background-color 0.2s ease;
 }
 
 .person-actions button:hover {
-    color: #1a73e8;
-    background-color: #e0e0e0;
+    color: var(--button-bg);
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark-mode .person-actions button:hover {
+    background-color: rgba(0, 0, 0, 0.2);
 }
 
 .person-hidden {
-    opacity: 0.5;
+    opacity: 0.6;
     font-style: italic;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .person-hidden {
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 .person-hidden .toggle-visibility-btn {
-    color: #888;
-}
-
-.person-hidden .toggle-visibility-btn:hover {
-    color: #1a73e8;
+    color: var(--sidebar-text-color);
+    opacity: 0.7;
 }
 
 
-/* Buttons */
+/* Section Calendrier */
+.calendar-section {
+    flex: 3;
+    background-color: var(--main-bg-color);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    min-height: 600px;
+}
+
+/* Boutons généraux */
 .button,
 button {
-    background-color: #1a73e8; /* Default button style */
-    color: white;
-    padding: 10px 15px;
+    background-color: var(--button-bg);
+    color: var(--toast-text-color);
+    padding: 10px 20px;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 1em;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-    text-decoration: none; /* For button acting as link */
+    font-weight: 500;
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    text-decoration: none;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
+    gap: 8px;
+    white-space: nowrap; /* Empêche le texte du bouton de se casser sur plusieurs lignes */
 }
 
 .button:hover,
 button:hover {
-    background-color: #155bb5;
-    transform: translateY(-1px);
+    background-color: var(--button-hover-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .button:active,
 button:active {
     transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .button-primary {
-    background-color: #28a745; /* Green for primary actions */
+    background-color: var(--toast-success-bg); /* Vert */
 }
 
 .button-primary:hover {
@@ -318,7 +302,7 @@ button:active {
 }
 
 .button-secondary {
-    background-color: #6c757d; /* Gray for secondary actions */
+    background-color: #6c757d; /* Gris */
 }
 
 .button-secondary:hover {
@@ -326,12 +310,21 @@ button:active {
 }
 
 .button-danger {
-    background-color: #dc3545; /* Red for destructive actions */
+    background-color: var(--toast-error-bg); /* Rouge */
 }
 
 .button-danger:hover {
     background-color: #c82333;
 }
+
+.button-info {
+    background-color: var(--toast-info-bg); /* Bleu clair */
+}
+
+.button-info:hover {
+    background-color: #117a8b;
+}
+
 
 .button-group {
     display: flex;
@@ -344,61 +337,69 @@ button:active {
     margin-left: 10px;
 }
 
-/* Modals */
+/* Modales */
 .modal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 1000; /* Sit on top */
+    display: none;
+    position: fixed;
+    z-index: 1000;
     left: 0;
     top: 0;
-    width: 100%; /* Full width */
-    height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgba(0, 0, 0, 0.6); /* Black w/ opacity */
-    justify-content: center; /* Center horizontally */
-    align-items: center; /* Center vertically */
-    opacity: 0; /* Start hidden for transition */
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.6);
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
     transition: opacity 0.3s ease-out;
 }
 
 .modal.show {
     opacity: 1;
+    display: flex; /* Garder flex pour le centrage */
 }
 
 .modal-content {
-    background-color: #fefefe;
+    background-color: var(--modal-bg);
+    backdrop-filter: blur(15px);
+    border: 1px solid var(--border-color);
     margin: auto;
-    padding: 20px;
-    border: 1px solid #888;
-    border-radius: 10px;
-    width: 90%; /* Smaller default width */
-    max-width: 600px; /* Max width for larger screens */
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 650px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
-    max-height: 90vh; /* Make content scrollable if too tall */
-    overflow-y: auto; /* Enable scrolling for modal content */
+    max-height: 90vh;
+    overflow-y: auto;
+    transform: translateY(-20px); /* Animation d'entrée */
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.modal.show .modal-content {
+    transform: translateY(0);
+    opacity: 1;
 }
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-    margin-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .modal-header h2 {
     margin: 0;
-    color: #1a73e8;
-    font-size: 1.5em;
+    color: var(--header-bg);
+    font-size: 1.8em;
 }
 
 .close-button {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
+    color: var(--text-color);
+    font-size: 32px;
     font-weight: bold;
     cursor: pointer;
     transition: color 0.2s ease;
@@ -406,150 +407,196 @@ button:active {
 
 .close-button:hover,
 .close-button:focus {
-    color: #333;
+    color: var(--button-bg);
     text-decoration: none;
 }
 
 .modal-body {
     flex-grow: 1;
+    margin-bottom: 20px;
+    font-size: 1.05em;
+}
+
+.modal-body p {
     margin-bottom: 15px;
 }
 
 .modal-footer {
-    border-top: 1px solid #eee;
-    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 20px;
     display: flex;
     justify-content: flex-end;
-    gap: 10px;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
-/* Form Styles within Modals */
+/* Éléments de formulaire */
 .form-group {
-    margin-bottom: 15px;
+    margin-bottom: 20px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-    color: #555;
-}
-
-body.dark-mode .form-group label {
-    color: #ccc;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--sidebar-text-color);
 }
 
 .form-group input[type="text"],
 .form-group input[type="date"],
 .form-group select,
 .form-group textarea {
-    width: calc(100% - 20px); /* Adjust for padding */
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
     font-size: 1em;
-    box-sizing: border-box; /* Include padding in width */
-    background-color: #fff;
-    color: #333;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background-color: rgba(255, 255, 255, 0.6); /* Fond semi-transparent */
+    color: var(--text-color);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+    -webkit-appearance: none; /* Supprime le style par défaut sur iOS/Safari */
+    -moz-appearance: none;
+    appearance: none;
 }
+
+.dark-mode .form-group input[type="text"],
+.dark-mode .form-group input[type="date"],
+.dark-mode .form-group select,
+.dark-mode .form-group textarea {
+    background-color: rgba(0, 0, 0, 0.6);
+    color: var(--text-color);
+}
+
 
 .form-group input:focus,
 .form-group select:focus,
 .form-group textarea:focus {
-    border-color: #1a73e8;
-    box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+    border-color: var(--button-bg);
+    box-shadow: 0 0 0 3px rgba(255, 127, 80, 0.3);
     outline: none;
+    background-color: rgba(255, 255, 255, 0.8); /* Plus opaque au focus */
 }
+
+.dark-mode .form-group input:focus,
+.dark-mode .form-group select:focus,
+.dark-mode .form-group textarea:focus {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
 
 .checkbox-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 15px;
-    margin-top: 5px;
+    gap: 20px;
+    margin-top: 10px;
 }
 
 .checkbox-group label {
     display: flex;
     align-items: center;
     font-weight: normal;
-    color: #333;
-}
-
-body.dark-mode .checkbox-group label {
-    color: #f6f7f9;
+    color: var(--sidebar-text-color);
+    cursor: pointer;
 }
 
 .checkbox-group input[type="checkbox"] {
-    margin-right: 8px;
-    width: auto;
+    margin-right: 10px;
+    width: auto; /* Réinitialise la largeur pour les checkboxes */
+    accent-color: var(--button-bg); /* Couleur de la checkbox cochée */
 }
 
 .recurring-options {
-    border: 1px dashed #ccc;
-    padding: 15px;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    margin-top: 20px;
+    border: 1px dashed var(--border-color);
+    padding: 20px;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.3);
+    margin-top: 25px;
+    color: var(--sidebar-text-color);
 }
 
-body.dark-mode .recurring-options {
-    background-color: #36393f;
-    border-color: #555;
+.dark-mode .recurring-options {
+    background-color: rgba(0, 0, 0, 0.3);
 }
 
 .recurring-options h4 {
     margin-top: 0;
-    color: #1a73e8;
-    font-size: 1.1em;
+    color: var(--header-bg);
+    font-size: 1.2em;
     margin-bottom: 15px;
 }
 
 /* FullCalendar Overrides */
-.fc .fc-toolbar-title {
-    font-size: 1.75em;
-    color: #333;
+.fc-theme-standard td, .fc-theme-standard th {
+    border: 1px solid var(--border-color);
+}
+
+.fc-toolbar-title {
+    color: var(--text-color) !important; /* Important pour écraser le style par défaut de FC */
+    font-size: 1.8em !important;
 }
 
 .fc .fc-button-primary {
-    background-color: #1a73e8;
-    border-color: #1a73e8;
-    color: #fff;
-    box-shadow: none;
-    transition: background-color 0.2s ease, border-color 0.2s ease;
+    background-color: var(--button-bg) !important;
+    border-color: var(--button-bg) !important;
+    color: var(--toast-text-color) !important;
+    box-shadow: none !important;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease !important;
 }
 
 .fc .fc-button-primary:hover {
-    background-color: #155bb5;
-    border-color: #155bb5;
+    background-color: var(--button-hover-bg) !important;
+    border-color: var(--button-hover-bg) !important;
+    transform: translateY(-1px);
 }
 
 .fc .fc-button-primary:not(:disabled).fc-button-active {
-    background-color: #0d47a1;
-    border-color: #0d47a1;
+    background-color: var(--button-hover-bg) !important;
+    border-color: var(--button-hover-bg) !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2) !important;
 }
 
-.fc .fc-event {
+.fc-daygrid-day {
+    background-color: var(--fullcalendar-day-bg);
+}
+
+.fc-day-other {
+    background-color: var(--fullcalendar-day-other-bg);
+    opacity: 0.7;
+}
+
+.fc-day-today {
+    background-color: var(--fullcalendar-today-bg) !important;
+}
+
+.fc-col-header-cell {
+    background-color: var(--fullcalendar-header-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+}
+
+.fc-event {
     border-radius: 4px;
     padding: 2px 4px;
     font-size: 0.85em;
     text-align: center;
     cursor: pointer;
-    white-space: normal; /* Allow text to wrap */
+    white-space: normal;
+    color: white !important; /* Texte des événements toujours blanc */
+    border: 1px solid transparent !important; /* Réinitialiser la bordure par défaut de FC */
 }
 
-/* Footer Styles */
+/* Footer */
 .footer {
-    background-color: #1a73e8;
+    background-color: var(--header-bg);
     color: white;
     text-align: center;
-    padding: 15px 20px;
-    margin-top: auto; /* Pushes footer to the bottom */
-    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
-    font-size: 0.9em;
+    padding: 15px 25px;
+    margin-top: auto;
+    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
+    font-size: 0.85em;
 }
 
-/* Toast Container (MODIFIED LOCATION) */
+/* Toasts Container - MODIFICATION POUR POSITIONNEMENT EN BAS À DROITE */
 #toastsContainer {
     position: fixed;
     bottom: 20px; /* Distance du bas */
@@ -557,27 +604,31 @@ body.dark-mode .recurring-options {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    z-index: 1000;
+    z-index: 1050; /* Au-dessus des modales si besoin */
     pointer-events: none; /* Permet de cliquer à travers le conteneur */
+    align-items: flex-end; /* Pour empiler les toasts à partir du bas droit */
+    width: auto; /* Largeur automatique */
+    max-width: calc(100vw - 40px); /* Pour ne pas dépasser l'écran sur mobile */
 }
 
-/* Toast Style */
+/* Style de base du toast */
 .toast {
-    background-color: #333;
-    color: #fff;
+    background-color: var(--toast-info-bg); /* Couleur par défaut */
+    color: var(--toast-text-color);
     padding: 12px 20px;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     opacity: 0;
-    transform: translateY(20px); /* Start slightly below for slide-up effect */
+    transform: translateY(20px); /* Commence légèrement en dessous pour l'animation */
     transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-    min-width: 280px; /* Slightly wider */
-    max-width: 380px; /* Slightly wider */
+    min-width: 280px;
+    max-width: 380px;
     pointer-events: all; /* Rétablit le pointer-events pour le toast lui-même */
     display: flex;
     align-items: center;
     gap: 10px;
     font-size: 0.95em;
+    line-height: 1.4;
 }
 
 .toast.show {
@@ -587,23 +638,23 @@ body.dark-mode .recurring-options {
 
 .toast.fade-out {
     opacity: 0;
-    transform: translateY(20px); /* Slide down when fading out */
+    transform: translateY(20px); /* Glisse vers le bas en disparaissant */
 }
 
-/* Specific Toast Colors */
+/* Couleurs spécifiques pour les types de toast */
 .toast.info {
-    background-color: #17a2b8; /* Bootstrap Info Blue */
+    background-color: var(--toast-info-bg);
 }
 
 .toast.success {
-    background-color: #28a745; /* Bootstrap Success Green */
+    background-color: var(--toast-success-bg);
 }
 
 .toast.error {
-    background-color: #dc3545; /* Bootstrap Danger Red */
+    background-color: var(--toast-error-bg);
 }
 
-/* Spinner for loading toasts */
+/* Spinner pour les toasts de chargement */
 .toast-spinner {
     font-size: 1.2em;
     animation: spin 1s linear infinite;
@@ -614,13 +665,14 @@ body.dark-mode .recurring-options {
     100% { transform: rotate(360deg); }
 }
 
-/* Stats Table Styles */
+/* Styles pour le tableau de statistiques */
 .stats-table-container {
     margin-top: 20px;
-    max-height: 400px; /* Limiter la hauteur du tableau */
-    overflow-y: auto; /* Rendre le tableau scrollable */
-    border: 1px solid #e0e0e0;
+    max-height: 400px; /* Limite la hauteur et ajoute un défilement */
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
     border-radius: 8px;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.05); /* Légère ombre interne */
 }
 
 .stats-table {
@@ -629,91 +681,159 @@ body.dark-mode .recurring-options {
     font-size: 0.95em;
 }
 
-.stats-table th,
-.stats-table td {
-    border: 1px solid #e0e0e0;
-    padding: 10px 12px;
+.stats-table th, .stats-table td {
+    padding: 12px 15px;
     text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
 }
 
 .stats-table th {
-    background-color: #f2f2f2;
+    background-color: var(--fullcalendar-header-bg);
     font-weight: bold;
-    color: #333;
-    position: sticky;
-    top: 0; /* Fixe l'en-tête du tableau lors du défilement */
-    z-index: 1; /* S'assure que l'en-tête est au-dessus du contenu */
-}
-
-.stats-table tbody tr:nth-child(odd) {
-    background-color: #ffffff;
+    position: sticky; /* Entêtes fixes lors du défilement */
+    top: 0;
+    z-index: 1;
 }
 
 .stats-table tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
+    background-color: rgba(0, 0, 0, 0.02); /* Légère bande pour la lisibilité */
 }
 
-/* Responsive Design */
+.dark-mode .stats-table tbody tr:nth-child(even) {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+
+/* Styles spécifiques à la modale de vérification des librairies */
+.library-check-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.library-check-table th,
+.library-check-table td {
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    text-align: left;
+}
+
+.library-check-table th {
+    background-color: var(--fullcalendar-header-bg);
+    font-weight: bold;
+}
+
+.library-check-table .status-ok {
+    color: var(--toast-success-bg);
+    font-weight: bold;
+}
+
+.library-check-table .status-warn {
+    color: orange;
+    font-weight: bold;
+}
+
+.library-check-table .status-error {
+    color: var(--toast-error-bg);
+    font-weight: bold;
+}
+
+/* Responsive design pour les petits écrans */
 @media (max-width: 768px) {
-    .main-content {
-        flex-direction: column;
-        padding: 10px;
-        gap: 10px;
+    main {
+        flex-direction: column; /* Sur les petits écrans, sidebar et main-content s'empilent */
+        padding: 15px; /* Réduit le padding sur les petits écrans */
+        gap: 15px;
+        max-width: calc(100% - 30px); /* Ajuste pour le padding */
     }
 
     .sidebar {
-        min-width: unset;
-        max-width: unset;
-        width: 100%;
+        min-width: unset; /* Annule le min-width sur mobile */
+        max-width: unset; /* Annule le max-width sur mobile */
+        width: 100%; /* La sidebar prend toute la largeur */
+        padding: 20px;
     }
 
     .calendar-section {
-        padding: 10px;
+        padding: 15px;
+        min-height: 400px; /* Ajuste la hauteur min du calendrier */
     }
 
     .header {
         flex-direction: column;
         align-items: flex-start;
-        padding: 10px;
+        padding: 15px;
+        gap: 8px;
     }
 
     .header .action-buttons {
         margin-top: 10px;
-        flex-wrap: wrap;
+        margin-left: 0; /* Réinitialise l'alignement pour mobile */
+        width: 100%; /* Les boutons prennent toute la largeur */
+        justify-content: center; /* Centre les boutons si possible */
     }
 
     .header h1 {
-        font-size: 1.5em;
+        font-size: 1.6em;
     }
 
     .header .app-info {
         margin-left: 0;
-        margin-top: 5px;
+        font-size: 0.75em;
+    }
+
+    .button, button {
+        padding: 8px 15px;
+        font-size: 0.9em;
+        gap: 5px;
     }
 
     .modal-content {
         width: 95%;
-        padding: 15px;
+        padding: 20px;
     }
 
-    .form-group input[type="text"],
-    .form-group input[type="date"],
+    .modal-header h2 {
+        font-size: 1.5em;
+    }
+
+    .close-button {
+        font-size: 28px;
+    }
+
+    .form-group input,
     .form-group select,
     .form-group textarea {
-        width: calc(100% - 16px); /* Adjust for smaller padding */
+        padding: 10px;
+    }
+
+    /* Toasts sur petits écrans */
+    #toastsContainer {
+        bottom: 10px;
+        right: 10px;
+        left: 10px; /* Étalement horizontal pour mieux s'adapter */
+        align-items: center; /* Centre les toasts au lieu de les aligner à droite */
     }
 
     .toast {
         min-width: unset;
-        max-width: calc(100vw - 40px); /* Adjust to screen width */
-        font-size: 0.9em;
+        max-width: 100%; /* Prend toute la largeur disponible */
+        font-size: 0.85em;
         padding: 10px 15px;
     }
 
-    #toastsContainer {
-        bottom: 10px;
-        right: 10px;
-        left: 10px; /* Allow toasts to stretch horizontally on small screens */
-        align-items: flex-end; /* Align to the right if multiple toasts */
+    .person-list-container {
+        max-height: 300px; /* Réduit la hauteur max sur mobile */
+    }
+
+    .stats-table th, .stats-table td {
+        padding: 8px 10px;
+        font-size: 0.85em;
+    }
+
+    .library-check-table th, .library-check-table td {
+        padding: 8px 10px;
+        font-size: 0.85em;
     }
 }
