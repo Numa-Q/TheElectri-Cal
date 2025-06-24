@@ -1,67 +1,151 @@
-/* Styles globaux */
+/* style.css */
+
 body {
-    margin: 0;
     font-family: Arial, sans-serif;
+    margin: 0;
     padding: 0;
-    background: linear-gradient(135deg, #6e7dff, #b3e9ff);
-    color: #333;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
+    min-height: 100vh;
+    background-color: #f4f7f6;
 }
 
-/* Titre */
-h1 {
-    font-size: 2.5rem;
-    margin-bottom: 20px;
-}
-
-/* Conteneur de l'application */
-.app-container {
-    background: rgba(255, 255, 255, 0.8); /* Effet glassmorphism */
-    backdrop-filter: blur(10px); /* Flou d'arrière-plan */
-    border-radius: 15px;
-    padding: 20px;
-    max-width: 600px; /* Largeur maximale pour le mode desktop */
-    width: 100%; /* S'étend en mode mobile */
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-/* Pied de page */
-footer {
+header {
+    background-color: #4CAF50;
+    color: white;
+    padding: 15px 20px;
     text-align: center;
-    margin-top: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-/* Icônes de navigation */
-.nav-icons {
-    margin-top: 10px;
+main {
+    display: flex;
+    flex-grow: 1;
+    padding: 20px;
+    gap: 20px;
 }
 
-.nav-icons i {
-    font-size: 1.5rem;
-    margin: 0 10px;
+.sidebar {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex: 0 0 200px; /* Largeur fixe pour la sidebar */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sidebar h2 {
+    margin-top: 0;
+    color: #333;
+}
+
+.sidebar button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
     cursor: pointer;
-    transition: color 0.3s;
+    font-size: 16px;
+    transition: background-color 0.2s ease;
 }
 
-.nav-icons i:hover {
-    color: #6e7dff; /* Changement de couleur au survol */
+.sidebar button:hover {
+    background-color: #0056b3;
 }
 
-/* Responsive design */
-@media (max-width: 600px) {
-    h1 {
-        font-size: 2rem;
-    }
+.main-content {
+    flex-grow: 1;
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
 
-    .app-container {
-        padding: 15px;
-    }
+#calendar {
+    max-width: 100%;
+    margin: 0 auto;
+}
 
-    .nav-icons i {
-        font-size: 1.2rem;
-    }
+/* Styles pour les modales */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #888;
+    border-radius: 8px;
+    width: 80%; /* Could be more specific */
+    max-width: 500px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    position: relative;
+}
+
+.close-button {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Styles pour les toasts */
+#toastsContainer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    background-color: #333;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast.success {
+    background-color: #28a745;
+}
+
+.toast.error {
+    background-color: #dc3545;
+}
+
+.toast.info {
+    background-color: #17a2b8;
 }
