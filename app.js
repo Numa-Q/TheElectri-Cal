@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.34"; // INCEMENTATION : Correction style icônes + persistance 404 FullCalendar
+const APP_VERSION = "v20.35"; // INCEMENTATION : Correction bouton Gérer les évènements + options export + isSameOrAfter
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -113,7 +113,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     dayjs.extend(dayjs_plugin_isBetween);
     dayjs.extend(dayjs_plugin_weekday);
     dayjs.extend(dayjs_plugin_isSameOrBefore);
-    dayjs.extend(dayjs_plugin_minMax); 
+    dayjs.extend(dayjs_plugin_minMax);
+    dayjs.extend(dayjs_plugin_isSameOrAfter); // AJOUTÉ POUR LA CORRECTION
 
     try {
         await openDB(); // Ouvre la base de données au démarrage
@@ -144,6 +145,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Gestionnaires d'événements pour les boutons (certains sont maintenant dans l'HTML avec onclick)
     const addPersonBtn = document.getElementById('addPersonBtn');
     if (addPersonBtn) addPersonBtn.addEventListener('click', showAddPersonModal);
+
+    // MODIFIÉ : Ajout du gestionnaire pour le bouton "Gérer les événements"
+    const addPlanningEventBtn = document.getElementById('addPlanningEventBtn');
+    if (addPlanningEventBtn) addPlanningEventBtn.addEventListener('click', () => showAddPlanningEventModal());
 
     // MODIFIÉ : Les boutons export appellent maintenant la modale d'options
     const exportPdfBtn = document.getElementById('exportPdfBtn');
@@ -1015,6 +1020,12 @@ function showExportOptionsModal(exportType) {
         </label>
     `).join('');
 
+    // MODIFIÉ : Options d'exportation simplifiées
+    const eventTypeOptionsHtml = `
+        <option value="all">Tous les événements</option>
+        <option value="permanence" selected>Uniquement les permanences</option>
+    `;
+
     const content = `
         <div class="form-group">
             <label>Sélectionner les personnes :</label>
@@ -1029,10 +1040,7 @@ function showExportOptionsModal(exportType) {
         <div class="form-group">
             <label for="exportEventTypeSelect">Type d'événements à exporter :</label>
             <select id="exportEventTypeSelect">
-                <option value="all">Tous les événements</option>
-                <option value="permanence" selected>Uniquement les permanences</option>
-                <option value="telework">Uniquement le télétravail</option>
-                <option value="leave">Uniquement les congés</option>
+                ${eventTypeOptionsHtml}
             </select>
         </div>
 
@@ -1081,11 +1089,10 @@ async function prepareAndPerformExport(type) {
         let isEventTypeSelected = false;
         if (selectedEventType === 'all') {
             isEventTypeSelected = true;
-        } else if (selectedEventType === 'telework') {
-            isEventTypeSelected = event.type === 'telework_punctual' || event.type === 'telework_recurrent';
-        } else {
-            isEventTypeSelected = event.type === selectedEventType;
+        } else if (selectedEventType === 'permanence') { // MODIFIÉ : Se concentre sur les permanences
+            isEventTypeSelected = event.type === 'permanence';
         }
+        // Suppression des autres conditions de type d'événement
         return isPersonSelected && isEventTypeSelected;
     });
 
