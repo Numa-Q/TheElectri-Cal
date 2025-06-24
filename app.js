@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.19"; // INCEMENTATION : Correction SyntaxError et ajout Stats
+const APP_VERSION = "v20.20"; // INCEMENTATION : Correction Day.js max/min + SyntaxError général
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     dayjs.extend(dayjs_plugin_isBetween);
     dayjs.extend(dayjs_plugin_weekday);
     dayjs.extend(dayjs_plugin_isSameOrBefore);
+    dayjs.extend(dayjs_plugin_maxMin); // NOUVEAU : Ajout du plugin maxMin
 
     try {
         await openDB(); // Ouvre la base de données au démarrage
@@ -1136,27 +1137,28 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate) {
         let currentMonth = dayjs(originalDate).startOf('month');
         let currentPage = 1;
 
-        const numberOfMonthsToExport = 2;
+        const numberOfMonthsToExport = 2; // Exportation sur 2 mois
 
         for (let i = 0; i < numberOfMonthsToExport; i++) {
             if (currentPage > 1) {
                 pdf.addPage();
             }
             calendar.gotoDate(currentMonth.toDate());
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 100)); // Laisse le temps au calendrier de se rendre
 
             const canvas = await html2canvas(calendarEl, {
                 scale: 2,
                 useCORS: true,
                 logging: false,
-                backgroundColor: null
+                backgroundColor: null // Pour un fond transparent par défaut
             });
 
             const imgData = canvas.toDataURL('image/png');
             const imgWidthPx = canvas.width;
             const imgHeightPx = canvas.height;
 
-            const imgWidthMm = imgWidthPx * 25.4 / 96;
+            // Calculer les dimensions en mm pour qu'elles s'adaptent à la page PDF
+            const imgWidthMm = imgWidthPx * 25.4 / 96; // Convertir px en mm (96 dpi par défaut)
             const imgHeightMm = imgHeightPx * 25.4 / 96;
 
             let finalWidthMm, finalHeightMm;
@@ -1189,7 +1191,7 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate) {
 
     } catch (error) {
         console.error('Erreur lors de l\'exportation PDF multi-mois :', error);
-        throw error;
+        throw error; // Propage l'erreur pour le bloc finally de prepareAndPerformExport
     }
 }
 
@@ -1205,17 +1207,17 @@ async function exportPlanningToPngMultiMonth(originalView, originalDate, include
         calendar.changeView('dayGridMonth');
 
         let currentMonth = dayjs(originalDate).startOf('month');
-        const numberOfMonthsToExport = 2;
+        const numberOfMonthsToExport = 2; // Exportation sur 2 mois
 
         for (let i = 0; i < numberOfMonthsToExport; i++) {
             calendar.gotoDate(currentMonth.toDate());
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 100)); // Laisse le temps au calendrier de se rendre
 
             const canvas = await html2canvas(calendarEl, {
                 scale: 2,
                 useCORS: true,
                 logging: false,
-                backgroundColor: includeWhiteBackground ? '#FFFFFF' : null
+                backgroundColor: includeWhiteBackground ? '#FFFFFF' : null // Fond blanc si demandé, sinon transparent
             });
 
             const imgUrl = canvas.toDataURL('image/png');
@@ -1233,7 +1235,7 @@ async function exportPlanningToPngMultiMonth(originalView, originalDate, include
 
     } catch (error) {
         console.error('Erreur lors de l\'exportation PNG multi-mois :', error);
-        throw error;
+        throw error; // Propage l'erreur pour le bloc finally de prepareAndPerformExport
     }
 }
 
@@ -1244,7 +1246,7 @@ function showStatsModal() {
     const defaultEndDate = dayjs().endOf('year').format('YYYY-MM-DD');
 
     const content = `
-        <p>Calcule les statistiques des permanences, télétravail et congés pour les personnes.</p>
+        <p>Calcule le nombre de jours de permanence par personne sur la période sélectionnée.</p>
         ${createDatePicker('statsStartDate', 'Date de début', defaultStartDate, true)}
         ${createDatePicker('statsEndDate', 'Date de fin', defaultEndDate, true)}
         <div class="form-group button-group">
@@ -1255,7 +1257,7 @@ function showStatsModal() {
     `;
 
     // Pas de boutons dans le footer de la modale principale pour laisser place aux boutons internes
-    showModal('Statistiques du Planning', content, []);
+    showModal('Statistiques des Permanences', content, []);
     
     // Générer les stats automatiquement à l'ouverture avec la période par défaut
     setTimeout(() => generateAndDisplayStats(), 100);
@@ -1277,40 +1279,30 @@ function generateAndDisplayStats() {
     people.forEach(person => {
         stats[person.id] = {
             name: person.name,
-            permanenceDays: 0,
-            teleworkDays: 0,
-            leaveDays: 0,
-            totalEventDays: 0
+            permanenceDays: 0
         };
     });
 
     allCalendarEvents.forEach(event => {
+        // Seules les permanences sont prises en compte
+        if (event.type !== 'permanence') {
+            return;
+        }
+
         const eventStartDate = dayjs(event.start);
         // FullCalendar end date is exclusive, subtract 1 day for inclusive comparison
         const eventEndDate = dayjs(event.end).subtract(1, 'day');
 
         // Check if event overlaps with the selected stats period
-        if (eventStartDate.isBefore(endDate.add(1, 'day'), 'day') && eventEndDate.isAfter(startDate.subtract(1, 'day'), 'day')) {
-            const overlapStart = dayjs.max(eventStartDate, startDate);
-            const overlapEnd = dayjs.min(eventEndDate, endDate);
+        if (eventStartDate.isSameOrBefore(endDate, 'day') && eventEndDate.isSameOrAfter(startDate, 'day')) {
+            const overlapStart = dayjs.max(eventStartDate, startDate); // Utilisez dayjs.max() du plugin
+            const overlapEnd = dayjs.min(eventEndDate, endDate);     // Utilisez dayjs.min() du plugin
 
             let currentDay = overlapStart;
             while (currentDay.isSameOrBefore(overlapEnd, 'day')) {
                 const personStat = stats[event.personId];
                 if (personStat) {
-                    switch (event.type) {
-                        case 'permanence':
-                            personStat.permanenceDays++;
-                            break;
-                        case 'telework_punctual':
-                        case 'telework_recurrent':
-                            personStat.teleworkDays++;
-                            break;
-                        case 'leave':
-                            personStat.leaveDays++;
-                            break;
-                    }
-                    personStat.totalEventDays++;
+                    personStat.permanenceDays++;
                 }
                 currentDay = currentDay.add(1, 'day');
             }
@@ -1329,36 +1321,31 @@ function displayStatsTable(stats) {
             <thead>
                 <tr>
                     <th>Personne</th>
-                    <th>Permanences</th>
-                    <th>Télétravail</th>
-                    <th>Congés</th>
-                    <th>Total Événements</th>
+                    <th>Jours de Permanence</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
     let hasData = false;
-    for (const personId in stats) {
-        if (stats.hasOwnProperty(personId)) {
-            const stat = stats[personId];
-            if (stat.totalEventDays > 0 || stat.permanenceDays > 0 || stat.teleworkDays > 0 || stat.leaveDays > 0) {
-                hasData = true;
-                tableHtml += `
-                    <tr>
-                        <td>${stat.name}</td>
-                        <td>${stat.permanenceDays}</td>
-                        <td>${stat.teleworkDays}</td>
-                        <td>${stat.leaveDays}</td>
-                        <td>${stat.totalEventDays}</td>
-                    </tr>
-                `;
-            }
+    // Trier les personnes par nom avant d'afficher
+    const sortedPeopleStats = Object.values(stats).sort((a, b) => a.name.localeCompare(b.name));
+
+    sortedPeopleStats.forEach(stat => {
+        // Afficher seulement si la personne a des jours de permanence
+        if (stat.permanenceDays > 0) {
+            hasData = true;
+            tableHtml += `
+                <tr>
+                    <td>${stat.name}</td>
+                    <td>${stat.permanenceDays}</td>
+                </tr>
+            `;
         }
-    }
+    });
 
     if (!hasData) {
-        statsResultsDiv.innerHTML = '<p class="info-message">Aucune donnée pour la période sélectionnée.</p>';
+        statsResultsDiv.innerHTML = '<p class="info-message">Aucune donnée de permanence pour la période sélectionnée.</p>';
         return;
     }
 
@@ -1397,10 +1384,10 @@ function exportStatsAsCsv() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `electri-cal_stats_${dayjs().format('YYYY-MM-DD_HHmmss')}.csv`;
+    a.download = `electri-cal_permanence_stats_${dayjs().format('YYYY-MM-DD_HHmmss')}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    showToast('Statistiques exportées en CSV !', 'success');
+    showToast('Statistiques de permanence exportées en CSV !', 'success');
 }
