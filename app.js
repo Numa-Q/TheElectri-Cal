@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.49"; // INCEMENTATION : Nouvelle version
+const APP_VERSION = "v20.50"; // INCEMENTATION : Correction blocage PDF, nommage PDF, position toast
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -35,7 +35,7 @@ function openDB() {
         request.onupgradeneeded = (event) => {
             db = event.target.result;
             if (!db.objectStoreNames.contains(STORE_PEOPLE)) {
-                db.createObjectObjectStore(STORE_PEOPLE, { keyPath: 'id' });
+                db.createObjectStore(STORE_PEOPLE, { keyPath: 'id' });
             }
             if (!db.objectStoreNames.contains(STORE_EVENTS)) {
                 db.createObjectStore(STORE_EVENTS, { keyPath: 'id' });
@@ -190,7 +190,12 @@ let currentToast = null; // Pour gérer un seul toast à la fois
 
 function showToast(message, type = 'info', duration = 3000, isLoading = false) {
     const toastsContainer = document.getElementById('toastsContainer');
-    if (!toastsContainer) return;
+    // Créer le conteneur s'il n'existe pas
+    if (!toastsContainer) {
+        const newContainer = document.createElement('div');
+        newContainer.id = 'toastsContainer';
+        document.body.appendChild(newContainer);
+    }
 
     // Supprime le toast précédent s'il existe
     if (currentToast) {
@@ -205,7 +210,10 @@ function showToast(message, type = 'info', duration = 3000, isLoading = false) {
         <span>${message}</span>
     `;
 
-    toastsContainer.appendChild(toast);
+    // Ajoute la classe 'show' pour déclencher l'animation d'apparition
+    document.getElementById('toastsContainer').appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 10); // Petit délai pour que la transition s'applique
+
     currentToast = toast;
 
     if (duration !== 0) { // Si duration est 0, le toast reste indéfiniment
@@ -216,7 +224,7 @@ function showToast(message, type = 'info', duration = 3000, isLoading = false) {
                 if (currentToast === toast) { // Évite de supprimer un nouveau toast
                     currentToast = null;
                 }
-            });
+            }, { once: true }); // Supprime l'écouteur après une fois
         }, duration);
     }
 }
@@ -1123,9 +1131,6 @@ async function preparePdfDataAndGeneratePdf() {
             // FullCalendar end date is exclusive, subtract 1 day for inclusive comparison
             const eventEndDate = dayjs(event.end).subtract(1, 'day'); 
 
-            let day = dayjs.max(eventStartDate, startDate); // Commencer au plus tard entre le début de l'événement et le début de la période d'export
-            let loopEndDate = dayjs.min(eventEndDate, endDate); // Terminer au plus tôt entre la fin de l'événement et la fin de la période d'export
-
             // Correction: Inclure uniquement les jours qui sont dans la fourchette [startDate, endDate]
             let currentEventDay = eventStartDate;
             while (currentEventDay.isSameOrBefore(eventEndDate, 'day')) {
@@ -1182,7 +1187,6 @@ async function generatePermanencePdfTable(startDate, endDate) {
         return;
     }
 
-    // Premier DOC pour calculer le nombre de pages
     const doc = new jspdf.jsPDF('l', 'mm', 'a4'); // 'l' pour paysage
     
     const margin = 10; // mm
@@ -1194,8 +1198,9 @@ async function generatePermanencePdfTable(startDate, endDate) {
     const colWidth = (pageWidth - 2 * margin) / numberOfColumns; 
     
     const lineHeight = 7; // mm par ligne de texte (dates, permanences, backups)
-    const weekBlockHeight = 3 * lineHeight; // 3 lignes par semaine
+    const weekBlockHeight = 3 * lineHeight; // 3 lignes par semaine (Date, Perm, Backup)
     const weekSpacing = 5; // mm d'espace entre les blocs de semaines
+    const headerHeight = 15; // Hauteur de l'en-tête (titre)
     const footerHeight = 10; // Espace pour la pagination et le timestamp
 
     // Couleurs spécifiques pour le PDF
@@ -1207,22 +1212,18 @@ async function generatePermanencePdfTable(startDate, endDate) {
     const PDF_WEEKEND_TEXT_COLOR = '#888888'; // Texte gris pour le week-end
 
     // MODIFIÉ : Fonction pour ajouter le titre de la page et les footers
-    const addPageLayout = (docInstance, currentPageNum, totalPages, isFirstPass = true) => {
-        // En-tête
+    const addPageLayout = (docInstance, currentPageNum, totalPages) => {
         docInstance.setFontSize(14);
         docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
         docInstance.text(`Planning des Permanences : ${startDate.format('DD/MM/YYYY')} - ${endDate.format('DD/MM/YYYY')}`, pageWidth / 2, margin + 5, { align: 'center' });
         
-        // Pied de page (position ajustée) - Seulement si le totalPages est connu (deuxième passage)
-        if (!isFirstPass) { // Seulement au deuxième passage pour avoir le total des pages
-            docInstance.setFontSize(8);
-            docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
-            const generatedTime = dayjs().format('DD/MM/YYYY HH:mm');
-            docInstance.text(`Généré le: ${generatedTime}`, margin, pageHeight - margin + 3, { align: 'left' });
-            docInstance.text(`Page ${currentPageNum}/${totalPages}`, pageWidth - margin, pageHeight - margin + 3, { align: 'right' });
-        }
+        docInstance.setFontSize(8);
+        docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
+        const generatedTime = dayjs().format('DD/MM/YYYY HH:mm');
+        docInstance.text(`Généré le: ${generatedTime}`, margin, pageHeight - margin + 3, { align: 'left' });
+        docInstance.text(`Page ${currentPageNum}/${totalPages}`, pageWidth - margin, pageHeight - margin + 3, { align: 'right' });
         
-        return margin + 15; // Retourne la position Y après l'en-tête
+        return margin + headerHeight; // Retourne la position Y après l'en-tête
     };
 
     // Lire les données pré-formatées depuis IndexedDB
@@ -1266,7 +1267,12 @@ async function generatePermanencePdfTable(startDate, endDate) {
             week.push(dayPdfData);
         }
         weeksData.push(week);
-        currentWeekIter = currentWeekIter.add(1, 'day').startOf('week'); // Passer à la semaine suivante
+        currentWeekIter = currentWeekIter.add(1, 'day'); // Passer au jour suivant pour la prochaine itération de semaine
+        if (currentWeekIter.day() === 0) { // Si on est dimanche, passer au lundi suivant
+            currentWeekIter = currentWeekIter.add(1, 'day');
+        } else if (currentWeekIter.day() !== 1) { // Si on n'est ni dimanche ni lundi, aller au lundi de la semaine suivante
+             currentWeekIter = currentWeekIter.day(1).add(7, 'day');
+        }
     }
     
     // Filtrer les semaines qui ne contiennent aucune donnée pertinente pour la période d'export.
@@ -1284,24 +1290,23 @@ async function generatePermanencePdfTable(startDate, endDate) {
         return;
     }
 
-    // --- Premier passage : Rendu du contenu dans le PDF pour calculer le nombre de pages ---
-    // On utilise un document temporaire pour ce premier passage
-    let tempDoc = new jspdf.jsPDF('l', 'mm', 'a4');
-    let tempCurrentY = addPageLayout(tempDoc, 1, 0, true); 
-
+    // Calcul du nombre total de pages
+    let totalPages = 1;
+    let tempY = addPageLayout(doc, 1, 0); // Appel initial pour obtenir le Y de départ
     for (const week of relevantWeeksData) {
-        if (tempCurrentY + weekBlockHeight + weekSpacing > pageHeight - margin - footerHeight) {
-            tempDoc.addPage();
-            tempCurrentY = addPageLayout(tempDoc, tempDoc.internal.pages.length, 0, true);
+        // Simuler le rendu pour calculer la hauteur
+        if (tempY + weekBlockHeight + weekSpacing > pageHeight - margin - footerHeight) {
+            totalPages++;
+            tempY = addPageLayout(doc, totalPages, 0); // Réinitialiser Y pour la nouvelle page
         }
-        tempCurrentY += weekBlockHeight + weekSpacing;
+        tempY += weekBlockHeight + weekSpacing;
     }
-    const totalPages = tempDoc.internal.pages.length;
-    tempDoc = null; // Libérer la mémoire du document temporaire
 
+    // Réinitialiser le document pour le rendu final
+    doc.deletePage(1); // Supprimer la première page vide
+    doc.addPage();
+    let currentY = addPageLayout(doc, 1, totalPages); // Dessine l'en-tête de la première page, avec footer
 
-    // --- Deuxième passage : Rendu final avec la pagination correcte ---
-    currentY = addPageLayout(doc, 1, totalPages, false); // Dessine l'en-tête de la première page, avec footer
 
     for (let i = 0; i < relevantWeeksData.length; i++) {
         const week = relevantWeeksData[i];
@@ -1309,7 +1314,7 @@ async function generatePermanencePdfTable(startDate, endDate) {
         // Gérer les sauts de page avant de dessiner la semaine actuelle
         if (currentY + weekBlockHeight + weekSpacing > pageHeight - margin - footerHeight) {
             doc.addPage();
-            currentY = addPageLayout(doc, doc.internal.pages.length, totalPages, false); // Dessine l'en-tête de la nouvelle page, avec footer
+            currentY = addPageLayout(doc, doc.internal.pages.length, totalPages); // Dessine l'en-tête de la nouvelle page, avec footer
         }
         
         let tempX; // Position X pour le dessin des cellules
@@ -1353,7 +1358,7 @@ async function generatePermanencePdfTable(startDate, endDate) {
         currentY += weekSpacing; // Espacement après la semaine
     }
 
-    doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}.pdf`);
+    doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}_${dayjs().format('YYYYMMDD_HHmmss')}.pdf`);
     showToast('Le PDF du planning des permanences a été généré !', 'success');
 }
 
