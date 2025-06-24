@@ -21,56 +21,32 @@
     --toast-success-bg: #28a745;
     --toast-error-bg: #dc3545;
     --toast-text-color: white;
-    --footer-bg: rgba(255, 255, 255, 0.4);
-    --footer-text-color: #333;
-    --input-bg: #fff;
-    --input-border: #ccc;
-    --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    --glass-blur: blur(5px);
-    --glass-backdrop-filter: rgba(255, 255, 255, 0.2);
-    --fc-today-bg-color: rgba(255, 255, 0, 0.1); /* Jaune clair pour aujourd'hui */
-    --fc-button-bg-color: var(--button-bg);
-    --fc-button-border-color: var(--button-bg);
-    --fc-button-text-color: white;
-    --fc-button-hover-bg-color: var(--button-hover-bg);
-    --fc-button-active-bg-color: var(--button-hover-bg);
-    --fc-event-bg-color: var(--button-bg);
-    --fc-event-border-color: var(--button-bg);
-    --fc-event-text-color: white;
+    --footer-bg: rgba(255, 255, 255, 0.2);
+    --input-bg: #f9f9f9;
+    --input-border: #ddd;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-/* Variables CSS pour le thème sombre */
-body.dark-theme {
-    --bg-gradient-start: #2c3e50; /* Bleu nuit */
+/* Variables CSS pour les couleurs du thème sombre */
+body.dark-mode {
+    --bg-gradient-start: #2c3e50; /* Bleu foncé */
     --bg-gradient-end: #34495e;   /* Gris-bleu foncé */
-    --main-bg-color: rgba(0, 0, 0, 0.4); /* Fond glassmorphism foncé */
+    --main-bg-color: rgba(0, 0, 0, 0.4); /* Fond glassmorphism sombre */
     --border-color: rgba(255, 255, 255, 0.1);
-    --text-color: #eee;
-    --header-bg: #22303f;
-    --button-bg: #1abc9c; /* Turquoise */
-    --button-hover-bg: #16a085;
-    --sidebar-text-color: #ccc;
-    --modal-bg: rgba(20, 20, 20, 0.9);
-    --toast-info-bg: #0056b3; /* Bleu plus foncé */
-    --toast-success-bg: #218838; /* Vert plus foncé */
-    --toast-error-bg: #c82333; /* Rouge plus foncé */
+    --text-color: #f4f4f4;
+    --header-bg: #2c3e50;
+    --button-bg: #3498db; /* Bleu vif */
+    --button-hover-bg: #2980b9;
+    --sidebar-text-color: #ecf0f1;
+    --modal-bg: rgba(0, 0, 0, 0.9);
+    --toast-info-bg: #3498db;
+    --toast-success-bg: #27ae60;
+    --toast-error-bg: #e74c3c;
     --toast-text-color: white;
-    --footer-bg: rgba(0, 0, 0, 0.4);
-    --footer-text-color: #ccc;
-    --input-bg: #333;
+    --footer-bg: rgba(0, 0, 0, 0.2);
+    --input-bg: #3b3b3b;
     --input-border: #555;
-    --glass-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
-    --glass-blur: blur(5px);
-    --glass-backdrop-filter: rgba(0, 0, 0, 0.2);
-    --fc-today-bg-color: rgba(255, 255, 0, 0.05); /* Jaune très clair pour aujourd'hui en sombre */
-    --fc-button-bg-color: var(--button-bg);
-    --fc-button-border-color: var(--button-bg);
-    --fc-button-text-color: var(--text-color);
-    --fc-button-hover-bg-color: var(--button-hover-bg);
-    --fc-button-active-bg-color: var(--button-hover-bg);
-    --fc-event-bg-color: #2c3e50; /* Couleur d'événement plus foncée */
-    --fc-event-border-color: #34495e;
-    --fc-event-text-color: #eee;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 body {
@@ -88,243 +64,337 @@ body {
 header {
     background-color: var(--header-bg);
     color: white;
-    padding: 20px 0;
+    padding: 15px 20px;
     text-align: center;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    position: relative;
+    box-shadow: var(--box-shadow);
     z-index: 10;
 }
 
-header h1 {
-    margin: 0;
-    font-size: 1.8em;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
-}
-
 main {
-    display: flex;
     flex: 1;
+    display: flex;
     padding: 20px;
-    gap: 20px; /* Espace entre sidebar et main-content */
-    z-index: 1;
+    gap: 20px;
+    max-width: 1400px;
+    margin: 20px auto;
+    width: 100%;
 }
 
 .sidebar {
-    background: var(--main-bg-color);
-    border-radius: 10px;
+    flex: 0 0 280px; /* Largeur fixe pour la sidebar */
+    background-color: var(--main-bg-color);
     padding: 20px;
-    min-width: 250px;
-    box-shadow: var(--glass-shadow);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur); /* Compatibilité Safari */
-    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    box-shadow: var(--box-shadow);
+    color: var(--sidebar-text-color);
     display: flex;
     flex-direction: column;
     gap: 15px;
-    color: var(--sidebar-text-color);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px); /* Pour la compatibilité Safari */
 }
 
 .sidebar h2, .sidebar h3 {
     color: var(--text-color);
     margin-top: 0;
     margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
 }
 
 .sidebar button {
+    width: 100%;
+    padding: 12px 15px;
     background-color: var(--button-bg);
     color: white;
     border: none;
-    padding: 10px 15px;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 1em;
-    transition: background-color 0.2s ease, transform 0.2s ease;
-    width: 100%; /* Les boutons prennent toute la largeur de la sidebar */
-    text-align: left; /* Alignement du texte à gauche */
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar button:hover {
     background-color: var(--button-hover-bg);
-    transform: translateY(-2px); /* Effet léger de survol */
+    transform: translateY(-1px);
 }
 
-.sidebar button i {
-    margin-right: 8px; /* Espacement icône/texte */
+.sidebar button:active {
+    transform: translateY(0);
 }
 
 .people-list-container {
-    margin-top: 20px;
     padding: 15px;
     border-radius: 8px;
-    background: var(--main-bg-color);
-    box-shadow: var(--glass-shadow);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--border-color);
+    margin-top: 20px;
+    flex-grow: 1; /* Permet à la liste de prendre l'espace restant */
+    display: flex;
+    flex-direction: column;
 }
 
 .people-list-container h3 {
     margin-top: 0;
     margin-bottom: 10px;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
 }
 
-#peopleList {
+.people-list-container ul {
     list-style: none;
     padding: 0;
     margin: 0;
+    overflow-y: auto; /* Permet le défilement si beaucoup de personnes */
+    flex-grow: 1;
 }
 
-#peopleList li {
+.people-list-container li {
+    background-color: rgba(255, 255, 255, 0.6); /* Fond semi-transparent pour les items */
+    border: 1px solid var(--border-color);
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    border-radius: 5px;
     display: flex;
-    justify-content: space-between;\n    align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-color);
+    justify-content: space-between;
+    align-items: center;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-#peopleList li:last-child {
-    border-bottom: none;
+.people-list-container li:hover {
+    background-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-#peopleList .no-people {
-    text-align: center;
+body.dark-mode .people-list-container li {
+    background-color: rgba(0, 0, 0, 0.6);
     color: var(--sidebar-text-color);
-    font-style: italic;
 }
 
-#peopleList .actions button {
-    width: auto;
-    padding: 5px 8px;
-    margin-left: 5px;
-    font-size: 0.9em;
+body.dark-mode .people-list-container li:hover {
+    background-color: rgba(0, 0, 0, 0.8);
 }
 
-#peopleList .actions .edit-btn {
-    background-color: #007bff; /* Bleu */
+.people-list-container li.person-hidden {
+    opacity: 0.6;
+    background-color: rgba(128, 128, 128, 0.3); /* Grisâtre pour masqué */
+}
+body.dark-mode .people-list-container li.person-hidden {
+    background-color: rgba(60, 60, 60, 0.6);
 }
 
-#peopleList .actions .edit-btn:hover {
-    background-color: #0056b3;
+/* Styles pour les actions des personnes (NOUVEAU/CORRIGÉ) */
+.person-actions {
+    display: flex; /* Aligner les boutons horizontalement */
+    gap: 5px; /* Espacement entre les boutons */
+    margin-left: auto; /* Pousser le groupe d'actions vers la droite */
 }
 
-#peopleList .actions .delete-btn {
-    background-color: #dc3545; /* Rouge */
+.person-actions button {
+    background: none; /* Supprimer l'arrière-plan du bouton */
+    border: none; /* Supprimer la bordure du bouton */
+    color: var(--text-color); /* Couleur du texte par défaut */
+    cursor: pointer;
+    padding: 5px; /* Petit padding */
+    font-size: 1.1em; /* Taille de l'icône */
+    display: flex; /* Centrer l'icône dans le bouton */
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%; /* Boutons ronds */
+    width: 34px; /* Taille fixe */
+    height: 34px; /* Taille fixe */
+    transition: background-color 0.2s ease, color 0.2s ease;
+    box-shadow: none; /* Pas d'ombre portée sur ces petits boutons */
 }
 
-#peopleList .actions .delete-btn:hover {
-    background-color: #c82333;
+.person-actions button:hover {
+    background-color: var(--button-hover-bg); /* Couleur de survol générale */
+    color: white; /* Couleur de l'icône au survol */
 }
 
+/* Styles spécifiques pour chaque type de bouton d'action */
+.person-actions .toggle-visibility-btn {
+    color: var(--toast-info-bg); /* Bleu pour la visibilité */
+}
+.person-actions .toggle-visibility-btn:hover {
+    background-color: var(--toast-info-bg);
+    color: white;
+}
+
+.person-actions .edit-person-btn {
+    color: var(--button-bg); /* Corail pour l'édition */
+}
+.person-actions .edit-person-btn:hover {
+    background-color: var(--button-bg);
+    color: white;
+}
+
+.person-actions .delete-person-btn {
+    color: var(--toast-error-bg); /* Rouge pour la suppression */
+}
+.person-actions .delete-person-btn:hover {
+    background-color: var(--toast-error-bg);
+    color: white;
+}
+
+.person-actions button i {
+    /* Assure que l'icône n'est pas elle-même cliquable séparément du bouton */
+    pointer-events: none;
+}
+
+
+/* MAIN CONTENT - CALENDAR */
 .main-content {
     flex: 1;
-    background: var(--main-bg-color);
-    border-radius: 10px;
+    background-color: var(--main-bg-color);
     padding: 20px;
-    box-shadow: var(--glass-shadow);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
+    border-radius: 10px;
+    box-shadow: var(--box-shadow);
     border: 1px solid var(--border-color);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    overflow: hidden; /* Important pour les éléments du calendrier */
 }
 
 #calendar {
     max-width: 100%;
     margin: 0 auto;
-    background-color: transparent; /* FullCalendar aura un fond transparent pour laisser voir le glassmorphism */
-    border-radius: 8px;
+    font-size: 0.9em; /* Ajuster la taille de la police pour le calendrier */
 }
 
-/* Personnalisation de FullCalendar */
-.fc .fc-toolbar.fc-header-toolbar {
-    margin-bottom: 1.5em;
+/* Customisation FullCalendar */
+.fc-toolbar-title {
     color: var(--text-color);
 }
 
-.fc .fc-button-primary {
-    background-color: var(--fc-button-bg-color);
-    border-color: var(--fc-button-border-color);
-    color: var(--fc-button-text-color);
+.fc-button {
+    background-color: var(--button-bg) !important;
+    color: white !important;
+    border-color: var(--button-hover-bg) !important;
+    box-shadow: none !important;
+    text-transform: capitalize !important; /* Pour "Mois", "Semaine", etc. */
 }
 
-.fc .fc-button-primary:hover {
-    background-color: var(--fc-button-hover-bg-color);
-    border-color: var(--fc-button-hover-bg-color);
+.fc-button:hover {
+    background-color: var(--button-hover-bg) !important;
+    border-color: var(--button-hover-bg) !important;
 }
 
-.fc .fc-button-primary:not(:disabled).fc-button-active {
-    background-color: var(--fc-button-active-bg-color);
-    border-color: var(--fc-button-active-bg-color);
+.fc-button-active {
+    background-color: var(--button-hover-bg) !important;
 }
 
-.fc .fc-daygrid-day.fc-day-today {
-    background-color: var(--fc-today-bg-color);
+.fc-daygrid-day-number, .fc-col-header-cell-cushion {
+    color: var(--text-color) !important;
 }
 
-.fc .fc-event {
-    background-color: var(--fc-event-bg-color);
-    border-color: var(--fc-event-border-color);
-    color: var(--fc-event-text-color); /* Texte de l'événement */
-    font-size: 0.85em;
-    padding: 2px 4px;
-    border-radius: 3px;
-    margin-bottom: 1px; /* Espacement entre événements */
+/* Style des événements */
+.fc-event {
+    border: 1px solid !important; /* Utilisez la couleur de l'événement */
+    color: white !important;
+    font-size: 0.85em !important;
+    border-radius: 3px !important;
+    padding: 2px 4px !important;
+    margin-bottom: 1px !important;
+    cursor: pointer;
+    white-space: nowrap; /* Empêche le texte de s'enrouler */
+    overflow: hidden;    /* Cache le texte qui dépasse */
+    text-overflow: ellipsis; /* Ajoute des points de suspension */
 }
 
-.fc-event-comments {
-    font-size: 0.75em;
-    opacity: 0.8;
-    margin-top: 2px;
-}
-
-/* Modal Styling */
-.modal-backdrop {
-    position: fixed;
-    top: 0;
+/* Modale */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 100; /* Sit on top */
     left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent overlay */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
     opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
-.modal-backdrop.show {
+.modal.show {
     opacity: 1;
-    visibility: visible;
 }
 
 .modal-content {
-    background: var(--modal-bg);
-    padding: 30px;
+    background-color: var(--modal-bg);
+    margin: auto;
+    padding: 25px;
     border-radius: 10px;
-    box-shadow: var(--glass-shadow);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border-color);
-    max-width: 500px;
-    width: 90%;
-    color: var(--text-color);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 90%; /* Responsive width */
+    max-width: 550px;
     position: relative;
-    transform: translateY(-20px);
+    transform: translateY(-50px); /* Start slightly above */
     opacity: 0;
     transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.modal-backdrop.show .modal-content {
-    transform: translateY(0);
+.modal.show .modal-content {
+    transform: translateY(0); /* Slide into place */
     opacity: 1;
 }
 
-.modal-content h2 {
-    margin-top: 0;
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
     margin-bottom: 20px;
-    text-align: center;
+}
+
+.modal-header h2 {
+    margin: 0;
     color: var(--text-color);
 }
+
+.close-button {
+    color: var(--text-color);
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: var(--button-hover-bg);
+    text-decoration: none;
+}
+
+.modal-body {
+    margin-bottom: 20px;
+    max-height: 70vh; /* Limite la hauteur du contenu de la modale */
+    overflow-y: auto; /* Ajoute un scroll si le contenu dépasse */
+    padding-right: 10px; /* Espace pour la barre de défilement */
+}
+
+/* Custom scrollbar for webkit browsers */
+.modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+.modal-body::-webkit-scrollbar-track {
+    background: var(--input-bg);
+    border-radius: 10px;
+}
+.modal-body::-webkit-scrollbar-thumb {
+    background: var(--button-bg);
+    border-radius: 10px;
+}
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--button-hover-bg);
+}
+
 
 .form-group {
     margin-bottom: 15px;
@@ -332,12 +402,16 @@ main {
 
 .form-group label {
     display: block;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     font-weight: bold;
     color: var(--text-color);
 }
 
-.form-control {
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
     width: 100%;
     padding: 10px;
     border: 1px solid var(--input-border);
@@ -345,13 +419,77 @@ main {
     background-color: var(--input-bg);
     color: var(--text-color);
     font-size: 1em;
-    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.form-control:focus {
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
     border-color: var(--button-bg);
+    box-shadow: 0 0 0 3px rgba(var(--button-bg-rgb), 0.3); /* Utiliser une variable pour RGB si possible */
     outline: none;
-    box-shadow: 0 0 0 2px rgba(var(--button-bg), 0.2);
+}
+
+.checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    font-weight: normal;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+    margin-top: 20px;
+}
+
+.button-primary, .button-secondary, .button-danger {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.button-primary {
+    background-color: var(--button-bg);
+    color: white;
+}
+
+.button-primary:hover {
+    background-color: var(--button-hover-bg);
+    transform: translateY(-1px);
+}
+
+.button-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.button-secondary:hover {
+    background-color: #5a6268;
+    transform: translateY(-1px);
+}
+
+.button-danger {
+    background-color: var(--toast-error-bg);
+    color: white;
+}
+
+.button-danger:hover {
+    background-color: #c82333;
+    transform: translateY(-1px);
 }
 
 .button-group {
@@ -361,126 +499,71 @@ main {
     margin-top: 20px;
 }
 
-.button-primary {
-    background-color: var(--button-bg);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.2s ease;
+.ml-2 {
+    margin-left: 0.5rem; /* Standard margin utility class */
 }
 
-.button-primary:hover {
-    background-color: var(--button-hover-bg);
-}
-
-.button-secondary {
-    background-color: #6c757d; /* Gris pour annuler/fermer */
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.2s ease;
-}
-
-.button-secondary:hover {
-    background-color: #5a6268;
-}
-
-.button-tertiary {
-    background-color: #dc3545; /* Rouge pour supprimer */
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.2s ease;
-}
-
-.button-tertiary:hover {\n    background-color: #c82333;
-}
-
-/* Toast notifications */
+/* Toasts */
 #toastsContainer {
     position: fixed;
-    bottom: 20px;
+    top: 20px;
     right: 20px;
-    z-index: 1050;
+    z-index: 1000;
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
 .toast {
-    background-color: var(--toast-info-bg);
-    color: var(--toast-text-color);
+    background-color: #333;
+    color: white;
     padding: 10px 20px;
     border-radius: 5px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    opacity: 0;
-    transform: translateX(100%);
-    transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.toast.show {
     opacity: 1;
+    transition: opacity 0.5s ease-out, transform 0.3s ease-out;
     transform: translateX(0);
+    min-width: 250px;
+    display: flex;
+    align-items: center;
 }
 
-.toast.hide {
+.toast.info { background-color: var(--toast-info-bg); }
+.toast.success { background-color: var(--toast-success-bg); }
+.toast.error { background-color: var(--toast-error-bg); }
+
+.toast.fade-out {
     opacity: 0;
     transform: translateX(100%);
 }
 
-.toast-info {
-    background-color: var(--toast-info-bg);
-}
-
-.toast-success {
-    background-color: var(--toast-success-bg);
-}
-
-.toast-error {
-    background-color: var(--toast-error-bg);
-}
-
-/* Statistiques Table */
-.stats-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    background: var(--input-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.stats-table th,\n.stats-table td {
-    border: 1px solid var(--border-color);
-    padding: 12px;
-    text-align: left;
+footer {
+    text-align: center;
+    padding: 15px;
+    background-color: var(--footer-bg);
     color: var(--text-color);
+    font-size: 0.9em;
+    margin-top: 20px;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
 }
 
-.stats-table thead {
-    background-color: var(--header-bg);
-    color: white;
+/* Styles pour les options de récurrence */
+.recurring-options {
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+    transition: all 0.3s ease;
 }
 
-.stats-table tbody tr:nth-child(odd) {
-    background-color: rgba(255, 255, 255, 0.05); /* Légère différence pour la lisibilité */
+.recurring-options h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--text-color);
+    font-size: 1.1em;
 }
 
-.stats-table tbody tr:hover {
-    background-color: rgba(0, 0, 0, 0.05); /* Effet de survol */
-}
-
-/* Styling pour les checkboxes de jours */
 .day-checkboxes {
     display: flex;
     flex-wrap: wrap;
@@ -504,7 +587,7 @@ main {
     border-color: var(--button-hover-bg);
     color: white;
 }
-.day-checkboxes label:has(input:checked) input[type=\"checkbox\"] {
+.day-checkboxes label:has(input:checked) input[type="checkbox"] {
     accent-color: var(--text-color); /* Pour changer la couleur de la coche */
 }
 
@@ -528,26 +611,98 @@ main {
     }
 
     .modal-content {
-        max-width: 95%;
-        padding: 20px;
+        width: 95%; /* Prend plus de place sur les petits écrans */
+        padding: 15px;
     }
 
-    .button-group {
+    .modal-footer {
         flex-direction: column;
         gap: 8px;
     }
 
-    .button-group button {
+    .button-primary, .button-secondary, .button-danger {
         width: 100%;
+        text-align: center;
     }
 
-    header h1 {
-        font-size: 1.5em;
-    }
-
-    .toast {
-        bottom: 10px;
+    #toastsContainer {
+        top: 10px;
         right: 10px;
-        width: calc(100% - 20px);
+        left: 10px; /* Centrer les toasts sur les petits écrans */
+        width: auto;
     }
+    .toast {
+        min-width: unset;
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+}
+
+/* Styles pour le tableau de statistiques */
+.stats-table-container {
+    max-height: 300px; /* Hauteur maximale pour le tableau */
+    overflow-y: auto; /* Ajoute un défilement si le contenu dépasse */
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-top: 20px;
+    background-color: var(--input-bg);
+}
+
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.stats-table th, .stats-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.stats-table thead {
+    background-color: var(--header-bg);
+    color: white;
+    position: sticky; /* Rendre l'en-tête collant */
+    top: 0; /* Coller en haut du conteneur parent défilable */
+    z-index: 1; /* Assurer qu'il reste au-dessus du contenu */
+}
+
+.stats-table tbody tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.03); /* Légère bande pour la lisibilité */
+}
+
+body.dark-mode .stats-table tbody tr:nth-child(even) {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.stats-table tbody tr:hover {
+    background-color: rgba(var(--button-bg-rgb), 0.1); /* Hover effect using button color */
+}
+body.dark-mode .stats-table tbody tr:hover {
+    background-color: rgba(var(--button-bg-rgb), 0.2);
+}
+
+.info-message {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-color);
+    font-style: italic;
+}
+
+/* Helper class for margin-top */
+.mt-3 {
+    margin-top: 1rem;
+}
+
+/* glass-effect class for common glassmorphism styles */
+.glass-effect {
+    background-color: var(--main-bg-color);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: var(--box-shadow);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
 }
