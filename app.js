@@ -10,7 +10,7 @@ const STORAGE_KEY_EVENTS = 'electricalPermanenceEvents'; // Pour les futurs év�
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.7"; // Incrémentation de la version pour l'export
+const APP_VERSION = "v20.8"; // **NOUVEAU :** Incrémentation de la version
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log(`${APP_NAME} - Version ${APP_VERSION} chargée !`);
@@ -104,33 +104,31 @@ function showToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-// --- Modales ---
-// ... (Les fonctions showModal, closeModal, createModalContainer, createAndShowModal, createInput, createCheckboxGroup, createSelectInput, createTextArea, createDatePicker, createTimePicker, createColorPicker restent inchangées, mais assurez-vous qu'elles sont présentes)
-
+// --- Fonctions de gestion des Modales (reprises de TA version stable) ---
 function showModal(contentHtml, title, buttons = []) {
     let modal = document.getElementById('dynamicModal');
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'dynamicModal';
-        modal.classList.add('modal', 'glass-effect');
+        modal.classList.add('modal'); // Garder la classe 'modal' pour le CSS
         document.getElementById('modalsContainer').appendChild(modal);
     }
     modal.innerHTML = `
-        <div class="modal-header">
-            <h2>${title}</h2>
-            <span class="close-button" onclick="closeModal()">&times;</span>
-        </div>
         <div class="modal-content">
-            ${contentHtml}
-        </div>
-        <div class="modal-footer">
-            ${buttons.map(btn => `<button class="${btn.class || ''}" onclick="${btn.onclick}">${btn.text}</button>`).join('')}
+            <div class="modal-header">
+                <h2>${title}</h2>
+                <span class="close-button" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                ${contentHtml}
+            </div>
+            <div class="modal-footer">
+                ${buttons.map(btn => `<button class="${btn.class || ''}" onclick="${btn.onclick}">${btn.text}</button>`).join('')}
+            </div>
         </div>
     `;
     modal.style.display = 'block';
-    // Ajouter une classe pour l'animation d'apparition
     setTimeout(() => modal.classList.add('show'), 10);
-    // Masquer le débordement du corps pour empêcher le défilement
     document.body.style.overflow = 'hidden';
 }
 
@@ -140,15 +138,12 @@ function closeModal() {
         modal.classList.remove('show');
         modal.addEventListener('transitionend', () => {
             modal.style.display = 'none';
-            // Supprimer le contenu pour le nettoyer
-            modal.innerHTML = '';
-        }, { once: true }); // N'exécuter qu'une seule fois
+            modal.innerHTML = ''; // Nettoyer le contenu
+        }, { once: true });
     }
-    // Rétablir le débordement du corps
     document.body.style.overflow = '';
 }
 
-// Fonction pour créer et afficher une modale standard
 function createAndShowModal(title, content, primaryButtonText, primaryButtonAction, cancelButtonText = 'Annuler', cancelButtonAction = 'closeModal()') {
     const buttons = [];
     if (primaryButtonText && primaryButtonAction) {
@@ -160,7 +155,7 @@ function createAndShowModal(title, content, primaryButtonText, primaryButtonActi
     showModal(content, title, buttons);
 }
 
-// Fonctions pour créer des éléments de formulaire dans les modales
+// Fonctions pour créer des éléments de formulaire (reprises de TA version stable)
 function createInput(id, label, type = 'text', value = '', placeholder = '', required = false) {
     const requiredAttr = required ? 'required' : '';
     return `
@@ -240,6 +235,8 @@ function createColorPicker(id, label, value = '#007bff') {
         </div>
     `;
 }
+// --- Fin des fonctions de gestion des Modales ---
+
 
 // --- Gestion des personnes ---
 function savePeopleToLocalStorage() {
@@ -266,7 +263,7 @@ function renderPeopleList() {
     peopleListUl.innerHTML = '';
     people.forEach(person => {
         const li = document.createElement('li');
-        // Ajoute une classe 'hidden' si la personne n'est pas visible
+        // Ajoute une classe 'person-hidden' si la personne n'est pas visible
         if (!person.isVisible) {
             li.classList.add('person-hidden');
         }
@@ -408,13 +405,16 @@ function editPerson(personId) {
         person.name = newName;
         person.color = newColor; // Mettre à jour la couleur
 
-        // Mettre à jour les événements existants avec le nouveau nom et couleur (si nécessaire, ou juste la couleur si FullCalendar gère la source)
-        // **IMPORTANT :** Met à jour la couleur des événements existants
+        // Mettre à jour les événements existants avec la nouvelle couleur (le nom dans le titre d'événement sera mis à jour par l'affichage)
         allCalendarEvents.forEach(event => {
             if (event.personId === person.id) {
-                event.title = `${person.name} (${event.type})`; // Mettre à jour le titre si besoin
                 event.backgroundColor = person.color;
                 event.borderColor = person.color;
+                // Mettre à jour le titre de l'événement pour refléter le nouveau nom de la personne
+                // On suppose le format "Nom (Type)"
+                const eventTypeMatch = event.title.match(/\(([^)]+)\)$/);
+                const eventType = eventTypeMatch ? eventTypeMatch[1] : event.type; // Utilise le type si pas trouvé
+                event.title = `${person.name} (${eventType})`;
             }
         });
 
@@ -468,6 +468,20 @@ function loadCalendarEvents() {
     const storedEvents = localStorage.getItem(STORAGE_KEY_EVENTS);
     if (storedEvents) {
         allCalendarEvents = JSON.parse(storedEvents);
+        // S'assurer que les événements ont toutes les propriétés nécessaires, notamment pour les titres
+        allCalendarEvents = allCalendarEvents.map(event => {
+            const person = people.find(p => p.id === event.personId);
+            // Reconstruire le titre si nécessaire pour s'assurer qu'il reflète le nom actuel de la personne
+            if (person && (!event.title || !event.title.includes(person.name))) {
+                return {
+                    ...event,
+                    title: `${person.name} (${event.type})`,
+                    backgroundColor: event.backgroundColor || person.color,
+                    borderColor: event.borderColor || person.color
+                };
+            }
+            return event;
+        });
     } else {
         allCalendarEvents = [];
     }
@@ -482,9 +496,6 @@ function updateCalendarEventsDisplay() {
     // Mettre à jour les événements du calendrier FullCalendar
     if (calendar) {
         calendar.setOption('events', eventsToShow);
-        // Ou si tu veux garder les événements et juste changer la visibilité FullCalendar,
-        // tu pourrais itérer et utiliser event.setProp('display', 'auto' | 'none') si tu as des références aux objets Event de FullCalendar.
-        // Mais setOption('events', ...) est plus direct pour une refonte complète.
     }
 }
 
@@ -509,14 +520,14 @@ function initFullCalendar() {
         eventClick: function(info) {
             // Gérer le clic sur un événement
             const eventId = info.event.id;
+            // FullCalendar met les props étendues dans extendedProps
             const eventType = info.event.extendedProps.type;
             const personId = info.event.extendedProps.personId;
             showEditPlanningEventModal(eventId, eventType, personId);
         },
         select: function(info) {
             // Gérer la sélection d'une plage de dates
-            // Peut-être ouvrir une modale pour ajouter un événement rapide
-            // showAddPlanningEventModal(info.startStr, info.endStr); // Exemple
+            showAddPlanningEventModal(info.startStr, info.endStr);
         },
         events: [] // Initialement vide, sera rempli par updateCalendarEventsDisplay
     });
@@ -550,14 +561,17 @@ function showAddPlanningEventModal(startStr = '', endStr = '') {
             <label for="eventColor">Couleur de l'événement (optionnel, sinon couleur de la personne)</label>
             <input type="color" id="eventColor" value="">
         </div>
-        ${createCheckboxGroup('recurrenceDays', 'Jours de récurrence (pour Télétravail/Permanence)', [
-            { label: 'Lundi', value: '1' }, // dayjs().day() -> 0=Dimanche, 1=Lundi
-            { label: 'Mardi', value: '2' },
-            { label: 'Mercredi', value: '3' },
-            { label: 'Jeudi', value: '4' },
-            { label: 'Vendredi', value: '5' }
-        ])}
-        ${createDatePicker('recurrenceEndDate', 'Fin de récurrence (optionnel)')}
+        <div class="recurring-options">
+            <h4>Récurrence (pour Télétravail/Permanence)</h4>
+            ${createCheckboxGroup('recurrenceDays', 'Jours de récurrence', [
+                { label: 'Lundi', value: '1' }, // dayjs().day() -> 0=Dimanche, 1=Lundi
+                { label: 'Mardi', value: '2' },
+                { label: 'Mercredi', value: '3' },
+                { label: 'Jeudi', value: '4' },
+                { label: 'Vendredi', value: '5' }
+            ])}
+            ${createDatePicker('recurrenceEndDate', 'Fin de récurrence (optionnel)')}
+        </div>
     `;
 
     createAndShowModal('Ajouter un événement', content, 'Ajouter', 'addPlanningEvent()');
@@ -864,10 +878,6 @@ function importDataFromJson() {
 }
 
 function showExportModal() {
-    // Cette modale pourrait offrir des options pour différents types d'export si tu en ajoutes.
-    // Pour l'instant, elle n'est peut-être plus nécessaire si les boutons exportPdfBtn et exportPngBtn appellent directement les fonctions.
-    // Je la laisse pour le cas où tu voudrais ajouter des options (ex: choisir la plage de dates, les personnes, etc.)
-    // Pour l'instant, elle ne ferait qu'afficher un message ou renvoyer aux boutons existants.
     const content = `<p>Choisissez un format d'exportation :</p>`;
     createAndShowModal(
         'Options d\'exportation',
@@ -875,8 +885,6 @@ function showExportModal() {
         null, null, // Pas de bouton principal par défaut
         'Fermer'
     );
-    // Tu pourrais ajouter des boutons ici qui appellent directement exportPlanningToPdfMultiMonth/PngMultiMonth
-    // ou créer des modales spécifiques pour chaque type d'export si besoin de plus d'options.
 }
 
 // Fonction pour capturer et exporter en PDF plusieurs mois
