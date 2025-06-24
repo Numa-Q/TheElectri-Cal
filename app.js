@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.14"; // INCEMENTATION : Corrections des bugs signalés
+const APP_VERSION = "v20.15"; // INCEMENTATION : Ajout des options d'export PDF/PNG
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -144,15 +144,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addPersonBtn = document.getElementById('addPersonBtn');
     if (addPersonBtn) addPersonBtn.addEventListener('click', showAddPersonModal);
 
-    // addPlanningEventBtn est maintenant géré par onclick dans l'HTML: showAddPlanningEventModal('', '')
-    // const addPlanningEventBtn = document.getElementById('addPlanningEventBtn');
-    // if (addPlanningEventBtn) addPlanningEventBtn.addEventListener('click', showAddPlanningEventModal);
-
+    // MODIFIÉ : Les boutons export appellent maintenant la modale d'options
     const exportPdfBtn = document.getElementById('exportPdfBtn');
-    if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportPlanningToPdfMultiMonth);
+    if (exportPdfBtn) exportPdfBtn.addEventListener('click', () => showExportOptionsModal('pdf'));
 
     const exportPngBtn = document.getElementById('exportPngBtn');
-    if (exportPngBtn) exportPngBtn.addEventListener('click', exportPlanningToPngMultiMonth);
+    if (exportPngBtn) exportPngBtn.addEventListener('click', () => showExportOptionsModal('png'));
 
     const exportJsonBtn = document.getElementById('exportJsonBtn');
     if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportDataToJson);
@@ -1005,16 +1002,133 @@ async function importDataFromJson() {
     }
 }
 
-async function exportPlanningToPdfMultiMonth() {
+// NOUVEAU : Fonction pour afficher la modale des options d'export
+function showExportOptionsModal(exportType) {
+    if (people.length === 0) {
+        showToast("Veuillez ajouter au moins une personne d'abord.", "error");
+        return;
+    }
+    if (allCalendarEvents.length === 0) {
+        showToast("Aucun événement à exporter. Veuillez ajouter des événements au calendrier.", "info");
+        return;
+    }
+
+    const personCheckboxesHtml = people.map(person => `
+        <label>
+            <input type="checkbox" name="exportPerson" value="${person.id}" id="exportPerson_${person.id}" checked>
+            ${person.name}
+        </label>
+    `).join('');
+
+    const content = `
+        <div class="form-group">
+            <label>Sélectionner les personnes :</label>
+            <div class="checkbox-group" id="exportPersonCheckboxes">
+                ${personCheckboxesHtml}
+            </div>
+            <label>
+                <input type="checkbox" id="selectAllPeopleExport" checked onchange="toggleAllPeopleExport(this.checked)"> Sélectionner/Désélectionner tout
+            </label>
+        </div>
+
+        <div class="form-group">
+            <label for="exportEventTypeSelect">Type d'événements à exporter :</label>
+            <select id="exportEventTypeSelect">
+                <option value="all">Tous les événements</option>
+                <option value="permanence" selected>Uniquement les permanences</option>
+                <option value="telework">Uniquement le télétravail</option>
+                <option value="leave">Uniquement les congés</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Options d'export :</label>
+            <label style="display: block;">
+                <input type="checkbox" id="pngWhiteBackground" ${exportType === 'pdf' ? 'disabled' : ''}> Fond blanc (pour PNG seulement)
+            </label>
+        </div>
+    `;
+
+    const buttons = [];
+    if (exportType === 'pdf') {
+        buttons.push({ text: 'Exporter PDF', onclick: 'prepareAndPerformExport("pdf")', class: 'button-primary' });
+    } else if (exportType === 'png') {
+        buttons.push({ text: 'Exporter PNG', onclick: 'prepareAndPerformExport("png")', class: 'button-primary' });
+    }
+    buttons.push({ text: 'Annuler', onclick: 'closeModal()', class: 'button-secondary' });
+
+    createAndShowModal('Options d\'exportation', content, null, null, null, null); // Pas de boutons dans createAndShowModal, on les gère manuellement
+    modal.querySelector('.modal-footer').innerHTML = buttons.map(btn => `<button class="${btn.class || ''}" onclick="${btn.onclick}">${btn.text}</button>`).join('');
+}
+
+// NOUVEAU : Fonction pour basculer la sélection de toutes les personnes dans la modale d'export
+function toggleAllPeopleExport(checked) {
+    document.querySelectorAll('#exportPersonCheckboxes input[type="checkbox"]').forEach(checkbox => {
+        checkbox.checked = checked;
+    });
+}
+
+// NOUVEAU : Prépare et déclenche l'exportation
+async function prepareAndPerformExport(type) {
+    const selectedPersonIds = Array.from(document.querySelectorAll('#exportPersonCheckboxes input[type="checkbox"]:checked'))
+                               .map(cb => cb.value);
+    const selectedEventType = document.getElementById('exportEventTypeSelect').value;
+    const includeWhiteBackground = document.getElementById('pngWhiteBackground').checked;
+
+    if (selectedPersonIds.length === 0) {
+        showToast("Veuillez sélectionner au moins une personne pour l'exportation.", "error");
+        return;
+    }
+
+    closeModal(); // Fermer la modale d'options
+
+    // Sauvegarde l'état actuel du calendrier
+    const originalEventsOption = calendar.getOption('events');
+    const originalView = calendar.view.type;
+    const originalDate = calendar.getDate();
+
+    let filteredExportEvents = allCalendarEvents.filter(event => {
+        const isPersonSelected = selectedPersonIds.includes(event.personId);
+        const isEventTypeSelected = (selectedEventType === 'all' || event.type.startsWith(selectedEventType));
+        return isPersonSelected && isEventTypeSelected;
+    });
+
+    if (filteredExportEvents.length === 0) {
+        showToast("Aucun événement correspondant aux critères de sélection pour l'exportation.", "info");
+        calendar.setOption('events', originalEventsOption); // Restaurer immédiatement
+        calendar.changeView(originalView);
+        calendar.gotoDate(originalDate);
+        return;
+    }
+
+    // Appliquer les événements filtrés au calendrier temporairement
+    calendar.setOption('events', filteredExportEvents);
+    
+    try {
+        if (type === 'pdf') {
+            await exportPlanningToPdfMultiMonth(originalView, originalDate);
+        } else if (type === 'png') {
+            await exportPlanningToPngMultiMonth(originalView, originalDate, includeWhiteBackground);
+        }
+    } catch (error) {
+        console.error(`Erreur lors de l'exportation ${type}:`, error);
+        showToast(`Erreur lors de l'exportation ${type}.`, 'error');
+    } finally {
+        // Toujours restaurer l'état original du calendrier
+        calendar.setOption('events', originalEventsOption);
+        calendar.changeView(originalView);
+        calendar.gotoDate(originalDate);
+    }
+}
+
+
+async function exportPlanningToPdfMultiMonth(originalView, originalDate) {
     showToast("Génération du PDF en cours...", 'info', 5000);
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl || !calendar) {
         showToast("Erreur: Calendrier non trouvé.", "error");
         return;
     }
-
-    const originalView = calendar.view.type;
-    const originalDate = calendar.getDate();
 
     try {
         calendar.changeView('dayGridMonth');
@@ -1042,7 +1156,7 @@ async function exportPlanningToPdfMultiMonth() {
                 scale: 2, // Augmente la résolution
                 useCORS: true,
                 logging: false,
-                backgroundColor: null // Important pour les thèmes clairs/sombres
+                backgroundColor: null // Important pour les thèmes clairs/sombres (transparent si null)
             });
 
             const imgData = canvas.toDataURL('image/png');
@@ -1085,24 +1199,17 @@ async function exportPlanningToPdfMultiMonth() {
 
     } catch (error) {
         console.error('Erreur lors de l\'exportation PDF multi-mois :', error);
-        showToast("Erreur lors de l'exportation PDF multi-mois. Vérifiez la console.", 'error');
-    } finally {
-        // Restaurer la vue et la date originales, même en cas d'erreur
-        calendar.changeView(originalView);
-        calendar.gotoDate(originalDate);
+        throw error; // Propagate error for finally block in prepareAndPerformExport
     }
 }
 
-async function exportPlanningToPngMultiMonth() {
+async function exportPlanningToPngMultiMonth(originalView, originalDate, includeWhiteBackground) {
     showToast("Génération du(des) PNG(s) en cours...", 'info', 5000);
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl || !calendar) {
         showToast("Erreur: Calendrier non trouvé.", "error");
         return;
     }
-
-    const originalView = calendar.view.type;
-    const originalDate = calendar.getDate();
 
     try {
         calendar.changeView('dayGridMonth');
@@ -1118,7 +1225,7 @@ async function exportPlanningToPngMultiMonth() {
                 scale: 2, // Augmente la résolution
                 useCORS: true,
                 logging: false,
-                backgroundColor: null // Important pour les thèmes clairs/sombres
+                backgroundColor: includeWhiteBackground ? '#FFFFFF' : null // MODIFIÉ : Fond blanc ou transparent
             });
 
             const imgUrl = canvas.toDataURL('image/png');
@@ -1136,11 +1243,7 @@ async function exportPlanningToPngMultiMonth() {
 
     } catch (error) {
         console.error('Erreur lors de l\'exportation PNG multi-mois :', error);
-        showToast("Erreur lors de l'exportation PNG multi-mois. Vérifiez la console.", 'error');
-    } finally {
-        // Restaurer la vue et la date originales, même en cas d'erreur
-        calendar.changeView(originalView);
-        calendar.gotoDate(originalDate);
+        throw error; // Propagate error for finally block in prepareAndPerformExport
     }
 }
 
