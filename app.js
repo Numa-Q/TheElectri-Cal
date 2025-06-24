@@ -5,13 +5,42 @@
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Application de gestion du planning chargée !");
 
+    // Mise à jour de l'année du copyright
+    document.getElementById('currentYear').textContent = dayjs().year();
+
     // Initialisation de Day.js
     dayjs.extend(dayjs_plugin_customParseFormat);
     dayjs.extend(dayjs_plugin_isBetween);
 
+    // Gestion du thème sombre/clair
+    const themeToggleButton = document.getElementById('themeToggleButton');
+    const body = document.body;
+
+    // Charger le thème préféré de l l'utilisateur depuis le LocalStorage
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        body.classList.add('dark-mode');
+        themeToggleButton.textContent = 'Thème Clair';
+    } else {
+        themeToggleButton.textContent = 'Thème Sombre';
+    }
+
+    themeToggleButton.addEventListener('click', () => {
+        body.classList.toggle('dark-mode');
+        if (body.classList.contains('dark-mode')) {
+            localStorage.setItem('theme', 'dark');
+            themeToggleButton.textContent = 'Thème Clair';
+            showToast('Thème sombre activé', 'info');
+        } else {
+            localStorage.setItem('theme', 'light');
+            themeToggleButton.textContent = 'Thème Sombre';
+            showToast('Thème clair activé', 'info');
+        }
+    });
+
     // TODO: Initialiser FullCalendar
     // TODO: Charger les données initiales (LocalStorage)
-    // TODO: Gérer les événements des boutons
+    // TODO: Gérer les événements des autres boutons
 });
 
 /**
@@ -65,8 +94,8 @@ function showModal(title, contentHtml, onConfirm, onCancel = () => {}, showConfi
         <h2>${title}</h2>
         <div>${contentHtml}</div>
         <div style="margin-top: 20px; text-align: right;">
-            ${showCancelButton ? '<button id="cancelModalBtn" style="background-color: #6c757d; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">Annuler</button>' : ''}
-            ${showConfirmButton ? '<button id="confirmModalBtn" style="background-color: #28a745; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">Confirmer</button>' : ''}
+            ${showCancelButton ? '<button id="cancelModalBtn">Annuler</button>' : ''}
+            ${showConfirmButton ? '<button id="confirmModalBtn">Confirmer</button>' : ''}
         </div>
     `;
 
