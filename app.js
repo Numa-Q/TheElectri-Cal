@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.36"; // INCEMENTATION : Correction texte indésirable, export simplifié, correction export PDF/PNG
+const APP_VERSION = "v20.37"; // INCEMENTATION : Correction Uncaught SyntaxError, amélioration gestion export PDF/PNG, feedback utilisateur export
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -180,21 +180,49 @@ function toggleTheme() {
 }
 
 // Gestion des Toasts (notifications)
+let currentToast = null; // Pour gérer un seul toast à la fois
+
 function showToast(message, type = 'info', duration = 3000) {
     const toastsContainer = document.getElementById('toastsContainer');
     if (!toastsContainer) return;
+
+    // Supprime le toast précédent s'il existe
+    if (currentToast) {
+        currentToast.remove();
+        clearTimeout(currentToast.timer);
+    }
 
     const toast = document.createElement('div');
     toast.classList.add('toast', type);
     toast.textContent = message;
 
     toastsContainer.appendChild(toast);
+    currentToast = toast;
 
-    setTimeout(() => {
-        toast.classList.add('fade-out');
-        toast.addEventListener('transitionend', () => toast.remove());
-    }, duration);
+    if (duration !== 0) { // Si duration est 0, le toast reste indéfiniment
+        currentToast.timer = setTimeout(() => {
+            toast.classList.add('fade-out');
+            toast.addEventListener('transitionend', () => {
+                toast.remove();
+                if (currentToast === toast) { // Évite de supprimer un nouveau toast
+                    currentToast = null;
+                }
+            });
+        }, duration);
+    }
 }
+
+function hideToast() {
+    if (currentToast) {
+        currentToast.classList.add('fade-out');
+        currentToast.addEventListener('transitionend', () => {
+            currentToast.remove();
+            currentToast = null;
+        }, { once: true });
+        clearTimeout(currentToast.timer); // Assurez-vous de clear le timer
+    }
+}
+
 
 // --- Fonctions de gestion des Modales ---
 function showModal(title, contentHtml, buttons = []) {
@@ -1055,6 +1083,8 @@ async function prepareAndPerformExport(type) {
         calendar.gotoDate(originalDate);
         return;
     }
+    
+    showToast(`Préparation de l'exportation ${type.toUpperCase()} en cours...`, 'info', 0); // Durée 0 pour un toast persistant
 
     calendar.setOption('events', filteredExportEvents);
     
@@ -1064,10 +1094,12 @@ async function prepareAndPerformExport(type) {
         } else if (type === 'png') {
             await exportPlanningToPngMultiMonth(originalView, originalDate, includeWhiteBackground);
         }
+        showToast("Exportation réussie !", 'success'); // Succès
     } catch (error) {
         console.error(`Erreur lors de l'exportation ${type}:`, error);
-        showToast(`Erreur lors de l'exportation ${type}.`, 'error');
+        showToast(`Erreur lors de l'exportation ${type}. Veuillez vérifier la console pour plus de détails.`, 'error', 8000);
     } finally {
+        hideToast(); // Masque le toast de progression
         // Restaurer l'état original du calendrier, même en cas d'erreur
         calendar.setOption('events', originalEventsOption);
         calendar.changeView(originalView);
@@ -1077,17 +1109,14 @@ async function prepareAndPerformExport(type) {
 
 
 async function exportPlanningToPdfMultiMonth(originalView, originalDate, includeWhiteBackground) {
-    showToast("Génération du PDF en cours...", 'info', 5000);
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl || !calendar) {
-        showToast("Erreur: Calendrier non trouvé.", "error");
-        return;
+        throw new Error("Calendrier non trouvé.");
     }
 
     try {
         calendar.changeView('dayGridMonth');
-        // Attendre que le calendrier se mette à jour dans le DOM
-        await new Promise(resolve => setTimeout(resolve, 500)); // Augmentation du délai
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Augmentation du délai à 1 seconde
 
         const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
         const pdfPageWidthMm = pdf.internal.pageSize.getWidth();
@@ -1106,8 +1135,7 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate, include
                 pdf.addPage();
             }
             calendar.gotoDate(currentMonth.toDate());
-            // Attendre à nouveau le rendu après chaque gotoDate
-            await new Promise(resolve => setTimeout(resolve, 500)); 
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre à nouveau le rendu
 
             const canvas = await html2canvas(calendarEl, {
                 scale: 2,
@@ -1121,7 +1149,7 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate, include
             const imgHeightPx = canvas.height;
 
             // Calculer les dimensions en mm pour qu'elles s'adaptent à la page PDF
-            const imgWidthMm = imgWidthPx * 25.4 / 96; // Convertir px en mm (96 dpi par défaut)
+            const imgWidthMm = imgWidthPx * 25.4 / 96; 
             const imgHeightMm = imgHeightPx * 25.4 / 96;
 
             let finalWidthMm, finalHeightMm;
@@ -1150,35 +1178,29 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate, include
         }
 
         pdf.save(`planning_electri-cal_multi-mois_${dayjs().format('YYYY-MM-DD_HHmmss')}.pdf`);
-        showToast("Exportation PDF multi-mois réussie !", 'success');
 
     } catch (error) {
-        console.error('Erreur lors de l\'exportation PDF multi-mois :', error);
-        // Ne pas appeler showToast ici pour éviter le doublon avec le finally de prepareAndPerformExport
-        throw error;
+        console.error('Erreur détaillée lors de l\'exportation PDF multi-mois :', error);
+        throw error; // Propage l'erreur pour qu'elle soit gérée par prepareAndPerformExport
     }
 }
 
 async function exportPlanningToPngMultiMonth(originalView, originalDate, includeWhiteBackground) {
-    showToast("Génération du(des) PNG(s) en cours...", 'info', 5000);
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl || !calendar) {
-        showToast("Erreur: Calendrier non trouvé.", "error");
-        return;
+        throw new Error("Calendrier non trouvé.");
     }
 
     try {
         calendar.changeView('dayGridMonth');
-        // Attendre que le calendrier se mette à jour dans le DOM
-        await new Promise(resolve => setTimeout(resolve, 500)); // Augmentation du délai
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Augmentation du délai à 1 seconde
 
         let currentMonth = dayjs(originalDate).startOf('month');
         const numberOfMonthsToExport = 2; // Exportation sur 2 mois
 
         for (let i = 0; i < numberOfMonthsToExport; i++) {
             calendar.gotoDate(currentMonth.toDate());
-            // Attendre à nouveau le rendu après chaque gotoDate
-            await new Promise(resolve => setTimeout(resolve, 500)); 
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre à nouveau le rendu
 
             const canvas = await html2canvas(calendarEl, {
                 scale: 2,
@@ -1198,12 +1220,9 @@ async function exportPlanningToPngMultiMonth(originalView, originalDate, include
             currentMonth = currentMonth.add(1, 'month');
         }
 
-        showToast("Exportation PNG multi-mois réussie !", 'success');
-
     } catch (error) {
-        console.error('Erreur lors de l\'exportation PNG multi-mois :', error);
-        // Ne pas appeler showToast ici pour éviter le doublon avec le finally de prepareAndPerformExport
-        throw error;
+        console.error('Erreur détaillée lors de l\'exportation PNG multi-mois :', error);
+        throw error; // Propage l'erreur pour qu'elle soit gérée par prepareAndPerformExport
     }
 }
 
