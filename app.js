@@ -9,7 +9,7 @@ const STORAGE_KEY_EVENTS = 'electricalPermanenceEvents'; // Pour les futurs év�
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.6"; // Incrémentation de la version
+const APP_VERSION = "v20.7"; // Incrémentation de la version pour l'export
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log(`${APP_NAME} - Version ${APP_VERSION} chargée !`);
@@ -68,6 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ouvre la modale sans présélection de date au clic sur le bouton général
         showAddPlanningEventModal(dayjs().format('YYYY-MM-DD'), dayjs().format('YYYY-MM-DD'));
     });
+
+    // Nouveau : Écouteur pour le bouton d'export
+    document.getElementById('exportPlanningBtn').addEventListener('click', () => {
+        showExportModal();
+    });
 });
 
 /**
@@ -102,7 +107,7 @@ function showToast(message, type = 'info') {
  * @param {string} contentHtml - Le contenu HTML de la modale.
  * @param {Function} onConfirm - Fonction de rappel à exécuter si l'utilisateur confirme.
  * @param {Function} onCancel - Fonction de rappel à exécuter si l'utilisateur annule (optionnel).
- * @param {boolean} showConfirmButton - Affiche le bouton de confirmation (true par défaut).
+ * @param {boolean} showConfirmButton - Affiche le bouton de confirmation (true par default).
  * @param {boolean} showCancelButton - Affiche le bouton d'annulation (true par default).
  */
 function showModal(title, contentHtml, onConfirm, onCancel = () => {}, showConfirmButton = true, showCancelButton = true) {
@@ -667,5 +672,365 @@ function loadCalendarEvents() {
                 extendedProps: event.extendedProps // Assure que les extendedProps sont conservées
             });
         });
+    }
+}
+
+/**
+ * Affiche la modale d'options d'exportation.
+ */
+function showExportModal() {
+    if (people.length === 0) {
+        showToast("Veuillez d'abord ajouter des personnes pour exporter le planning.", "error");
+        return;
+    }
+
+    const peopleCheckboxes = people.map(p => `
+        <label>
+            <input type="checkbox" name="exportPerson" value="${p.id}" checked> ${p.name}
+        </label>
+    `).join('<br>');
+
+    const content = `
+        <label for="exportFormat">Format d'exportation :</label>
+        <select id="exportFormat">
+            <option value="png">PNG (Image)</option>
+            <option value="pdf">PDF (Document)</option>
+        </select>
+
+        <h4 style="margin-top: 15px;">Personnes à inclure :</h4>
+        <label><input type="checkbox" id="selectAllPeople" checked> Sélectionner tout</label><br>
+        <div id="exportPeopleList" class="day-checkboxes" style="max-height: 150px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+            ${peopleCheckboxes}
+        </div>
+
+        <h4 style="margin-top: 15px;">Période :</h4>
+        <label for="exportPeriod">Sélectionner une période :</label>
+        <select id="exportPeriod">
+            <option value="currentWeek">Semaine en cours</option>
+            <option value="currentMonth">Mois en cours</option>
+            <option value="nextMonth">Mois prochain</option>
+            <option value="currentAndNextMonth">Mois en cours + mois prochain</option>
+            <option value="customRange">Plage de dates personnalisée</option>
+        </select>
+
+        <div id="customDateRangeFields" style="display: none; margin-top: 10px;">
+            <label for="exportStartDate">Date de début :</label>
+            <input type="date" id="exportStartDate" value="${dayjs().format('YYYY-MM-DD')}">
+            <label for="exportEndDate">Date de fin :</label>
+            <input type="date" id="exportEndDate" value="${dayjs().add(1, 'month').endOf('month').format('YYYY-MM-DD')}">
+        </div>
+    `;
+
+    showModal(
+        "Exporter le Planning",
+        content,
+        async () => { // Utilisation de async ici car les fonctions d'export seront asynchrones
+            const format = document.getElementById('exportFormat').value;
+            const selectedPersonIds = Array.from(document.querySelectorAll('#exportPeopleList input[name="exportPerson"]:checked'))
+                                       .map(cb => cb.value);
+            const period = document.getElementById('exportPeriod').value;
+            let startDate = null;
+            let endDate = null;
+
+            // Déterminer la plage de dates en fonction de la sélection
+            const today = dayjs();
+            if (period === 'currentWeek') {
+                startDate = today.startOf('week'); // Lundi
+                endDate = today.endOf('week');     // Dimanche
+            } else if (period === 'currentMonth') {
+                startDate = today.startOf('month');
+                endDate = today.endOf('month');
+            } else if (period === 'nextMonth') {
+                startDate = today.add(1, 'month').startOf('month');
+                endDate = today.add(1, 'month').endOf('month');
+            } else if (period === 'currentAndNextMonth') {
+                startDate = today.startOf('month');
+                endDate = today.add(1, 'month').endOf('month');
+            } else if (period === 'customRange') {
+                startDate = dayjs(document.getElementById('exportStartDate').value);
+                endDate = dayjs(document.getElementById('exportEndDate').value);
+                if (!startDate.isValid() || !endDate.isValid() || startDate.isAfter(endDate)) {
+                    showToast("Dates personnalisées invalides.", "error");
+                    return;
+                }
+            }
+
+            // Filtrer les événements pour l'exportation
+            const filteredEvents = calendar.getEvents().filter(event => {
+                const eventStartDate = dayjs(event.start);
+                const eventEndDate = event.endStr ? dayjs(event.endStr).subtract(1, 'day') : dayjs(event.startStr); // FullCalendar end is exclusive
+
+                // Vérifier si la personne est sélectionnée OU si 'Toutes' sont sélectionnées (si on avait une option 'all')
+                // Ici, on filtre directement par les IDs des personnes cochées
+                const isPersonIncluded = selectedPersonIds.includes(event.extendedProps.personId);
+
+                // Vérifier si l'événement chevauche la période d'exportation
+                const isEventWithinPeriod = eventStartDate.isBetween(startDate, endDate, null, '[]') || // Événement commence ou finit dans la période
+                                            eventEndDate.isBetween(startDate, endDate, null, '[]') ||
+                                            (startDate.isBetween(eventStartDate, eventEndDate, null, '[]') && endDate.isBetween(eventStartDate, eventEndDate, null, '[]')); // Période d'exportation est à l'intérieur de l'événement
+
+                return isPersonIncluded && isEventWithinPeriod;
+            });
+
+            // Sauvegarder la vue actuelle et la date pour la restaurer après l'export
+            const originalView = calendar.view.type;
+            const originalDate = calendar.getDate();
+
+            // Temporairement ajuster la vue et les événements du calendrier pour l'exportation
+            // Créer un calendrier temporaire ou manipuler la visibilité des événements serait plus robuste
+            // Mais pour une première implémentation, nous allons simplement masquer/afficher les événements.
+            // Pour l'export PNG/PDF du calendrier, il est préférable de manipuler le DOM du calendrier.
+            // FullCalendar peut rendre des événements même s'ils ne sont pas dans la vue principale.
+            // L'approche la plus simple est de changer la vue de FullCalendar, prendre le screenshot, puis revenir.
+            // Cependant, cela peut être perturbant pour l'utilisateur.
+
+            // Une alternative plus propre (mais plus complexe) serait de créer un élément DOM caché,
+            // y initialiser un nouveau FullCalendar avec les événements filtrés et la vue désirée,
+            // puis prendre la capture de cet élément. Pour l'instant, restons simple et capturons le calendrier actuel.
+
+            // IMPORTANT : html2canvas capture le DOM VISIBLE. Pour exporter une période spécifique,
+            // il faut que cette période soit visible dans le calendrier FullCalendar au moment de la capture.
+            // Nous allons donc changer la vue du calendrier juste avant la capture.
+
+            showToast("Préparation de l'exportation...", "info");
+
+            let tempViewType = 'dayGridMonth'; // Vue par défaut pour 1 ou 2 mois
+            if (period === 'currentWeek') {
+                tempViewType = 'dayGridWeek';
+            }
+            // Pour 2 mois, FullCalendar n'a pas de vue native. On va faire 2 captures pour le PDF.
+            // Pour l'image, on prendra juste la vue actuelle.
+
+            // Déplacer le calendrier à la date de début de la période d'exportation
+            calendar.changeView(tempViewType, startDate.toDate());
+
+            // On attend que FullCalendar ait fini de rendre la nouvelle vue. Un petit délai est souvent nécessaire.
+            await new Promise(resolve => setTimeout(resolve, 500)); // Petit délai
+
+            if (format === 'png') {
+                await exportCalendarAsPng();
+            } else if (format === 'pdf') {
+                 // Pour le PDF, on peut gérer les mois séparément ou tenter une seule capture si la vue le permet.
+                if (period === 'currentAndNextMonth') {
+                     await exportCalendarAsPdfMultiMonth(startDate.format('YYYY-MM-DD'), endDate.format('YYYY-MM-DD'));
+                } else {
+                    await exportCalendarAsPdf();
+                }
+            }
+
+            // Restaurer la vue et la date originales
+            calendar.changeView(originalView, originalDate);
+        },
+        () => {
+            showToast("Exportation annulée.", "info");
+        }
+    );
+
+    // LOGIQUE DE VISIBILITÉ DES CHAMPS DE DATE PERSONNALISÉS
+    const exportPeriodSelect = document.getElementById('exportPeriod');
+    const customDateRangeFields = document.getElementById('customDateRangeFields');
+
+    const updateCustomDateFieldsVisibility = () => {
+        if (exportPeriodSelect.value === 'customRange') {
+            customDateRangeFields.style.display = 'block';
+        } else {
+            customDateRangeFields.style.display = 'none';
+        }
+    };
+    exportPeriodSelect.addEventListener('change', updateCustomDateFieldsVisibility);
+    updateCustomDateFieldsVisibility(); // Appel initial
+
+    // Gérer le "Sélectionner tout" pour les personnes
+    const selectAllPeopleCheckbox = document.getElementById('selectAllPeople');
+    const exportPersonCheckboxes = document.querySelectorAll('#exportPeopleList input[name="exportPerson"]');
+
+    selectAllPeopleCheckbox.addEventListener('change', (event) => {
+        exportPersonCheckboxes.forEach(cb => {
+            cb.checked = event.target.checked;
+        });
+    });
+
+    // Si une case individuelle est décochée, décocher "Sélectionner tout"
+    exportPersonCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+            if (!cb.checked) {
+                selectAllPeopleCheckbox.checked = false;
+            } else {
+                // Si toutes sont cochées manuellement, cocher "Sélectionner tout"
+                const allChecked = Array.from(exportPersonCheckboxes).every(c => c.checked);
+                selectAllPeopleCheckbox.checked = allChecked;
+            }
+        });
+    });
+}
+
+
+/**
+ * Exporte le calendrier FullCalendar en tant qu'image PNG.
+ * @param {HTMLElement} element - L'élément HTML à capturer (le conteneur du calendrier).
+ */
+async function exportCalendarAsPng() {
+    showToast("Génération de l'image PNG...", 'info');
+    const calendarEl = document.getElementById('calendar'); // Cible le conteneur principal du calendrier FullCalendar
+
+    try {
+        const canvas = await html2canvas(calendarEl, {
+            scale: 2, // Augmente la résolution pour une meilleure qualité
+            useCORS: true, // Important si vous avez des images ou styles cross-origin
+            logging: false // Désactive le logging pour éviter le bruit dans la console
+        });
+
+        const image = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = image;
+        link.download = `planning_electri-cal_${dayjs().format('YYYY-MM-DD_HHmmss')}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("Exportation PNG réussie !", 'success');
+    } catch (error) {
+        console.error('Erreur lors de l\'exportation PNG :', error);
+        showToast("Erreur lors de l'exportation PNG. Vérifiez la console.", 'error');
+    }
+}
+
+/**
+ * Exporte le calendrier FullCalendar en tant que document PDF.
+ * Note: Cette fonction exporte la vue visible du calendrier.
+ */
+async function exportCalendarAsPdf() {
+    showToast("Génération du document PDF...", 'info');
+    const { jsPDF } = window.jspdf; // Accéder à jsPDF depuis l'objet window
+    const calendarEl = document.getElementById('calendar');
+
+    try {
+        const canvas = await html2canvas(calendarEl, {
+            scale: 2,
+            useCORS: true,
+            logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'landscape', // Format paysage
+            unit: 'px', // Unité en pixels
+            format: [canvas.width, canvas.height] // Utilise la taille du canvas pour le format
+        });
+
+        // Calculer les dimensions pour adapter l'image au PDF tout en conservant les proportions
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+
+        const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+        const finalWidth = imgWidth * ratio;
+        const finalHeight = imgHeight * ratio;
+
+        pdf.addImage(imgData, 'PNG', 0, 0, finalWidth, finalHeight);
+        pdf.save(`planning_electri-cal_${dayjs().format('YYYY-MM-DD_HHmmss')}.pdf`);
+        showToast("Exportation PDF réussie !", 'success');
+
+    } catch (error) {
+        console.error('Erreur lors de l\'exportation PDF :', error);
+        showToast("Erreur lors de l'exportation PDF. Vérifiez la console.", 'error');
+    }
+}
+
+/**
+ * Exporte le calendrier FullCalendar en tant que document PDF pour une plage de deux mois.
+ * Cela implique de capturer chaque mois séparément.
+ * @param {string} startPeriodStr - Date de début de la période (YYYY-MM-DD).
+ * @param {string} endPeriodStr - Date de fin de la période (YYYY-MM-DD).
+ */
+async function exportCalendarAsPdfMultiMonth(startPeriodStr, endPeriodStr) {
+    showToast("Génération du PDF sur deux mois...", 'info');
+    const { jsPDF } = window.jspdf;
+    const calendarEl = document.getElementById('calendar');
+    const pdf = new jsPDF({
+        orientation: 'landscape', // A4 paysage par défaut
+        unit: 'mm',
+        format: 'a4'
+    });
+
+    const originalView = calendar.view.type;
+    const originalDate = calendar.getDate();
+
+    let currentPage = 1;
+    const padding = 10; // Marge en mm
+
+    try {
+        let currentMonth = dayjs(startPeriodStr).startOf('month');
+        const endMonth = dayjs(endPeriodStr).startOf('month');
+
+        while (currentMonth.isSameOrBefore(endMonth, 'month')) {
+            if (currentPage > 1) {
+                pdf.addPage();
+            }
+
+            // Changer la vue du calendrier au mois actuel
+            calendar.changeView('dayGridMonth', currentMonth.toDate());
+            await new Promise(resolve => setTimeout(resolve, 500)); // Attendre le rendu
+
+            const canvas = await html2canvas(calendarEl, {
+                scale: 2,
+                useCORS: true,
+                logging: false
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+
+            // Calculer les dimensions de l'image pour s'adapter à la page PDF avec padding
+            const imgWidthPx = canvas.width;
+            const imgHeightPx = canvas.height;
+
+            const pdfPageWidthMm = pdf.internal.pageSize.getWidth();
+            const pdfPageHeightMm = pdf.internal.pageSize.getHeight();
+
+            // Convertir les dimensions de l'image en mm pour le calcul du ratio
+            // Un pixel sur un écran standard est environ 0.264583 mm (96 dpi)
+            // Pour html2canvas, la 'scale' affecte directement les pixels capturés, pas nécessairement le DPI de la sortie.
+            // On va adapter l'image pour qu'elle remplisse la largeur ou la hauteur de la page.
+            const imgWidthMm = imgWidthPx * 25.4 / 96; // Supposons 96 DPI par défaut, converti en mm (1 pouce = 25.4 mm)
+            const imgHeightMm = imgHeightPx * 25.4 / 96;
+
+            const availableWidth = pdfPageWidthMm - (2 * padding);
+            const availableHeight = pdfPageHeightMm - (2 * padding);
+
+            let finalWidthMm, finalHeightMm;
+            const aspectRatio = imgWidthMm / imgHeightMm;
+
+            if (imgWidthMm > availableWidth || imgHeightMm > availableHeight) {
+                if (aspectRatio > availableWidth / availableHeight) {
+                    finalWidthMm = availableWidth;
+                    finalHeightMm = availableWidth / aspectRatio;
+                } else {
+                    finalHeightMm = availableHeight;
+                    finalWidthMm = availableHeight * aspectRatio;
+                }
+            } else {
+                finalWidthMm = imgWidthMm;
+                finalHeightMm = imgHeightMm;
+            }
+
+            // Centrer l'image
+            const x = (pdfPageWidthMm - finalWidthMm) / 2;
+            const y = (pdfPageHeightMm - finalHeightMm) / 2;
+
+            pdf.addImage(imgData, 'PNG', x, y, finalWidthMm, finalHeightMm);
+
+            currentMonth = currentMonth.add(1, 'month');
+            currentPage++;
+        }
+
+        pdf.save(`planning_electri-cal_multi-mois_${dayjs().format('YYYY-MM-DD_HHmmss')}.pdf`);
+        showToast("Exportation PDF sur deux mois réussie !", 'success');
+
+    } catch (error) {
+        console.error('Erreur lors de l\'exportation PDF multi-mois :', error);
+        showToast("Erreur lors de l'exportation PDF multi-mois. Vérifiez la console.", 'error');
+    } finally {
+        // Restaurer la vue et la date originales, même en cas d'erreur
+        calendar.changeView(originalView, originalDate);
     }
 }
