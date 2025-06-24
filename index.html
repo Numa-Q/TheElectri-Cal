@@ -3,51 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Electri-Cal - Planning de Permanence Électrique</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css">
+    <title>The Electri-Cal</title> <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/main.min.css' rel='stylesheet' />
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
+    <header>
+        <h1>The Electri-Cal: Gestion du Planning de Permanence Électrique</h1> </header>
+
+    <main>
         <aside class="sidebar">
-            <h1 id="appInfo"></h1>
-            <p class="tagline">Gérez votre planning électrique en toute simplicité.</p>
+            <h2>Actions</h2>
+            <button id="addPersonBtn">Ajouter une personne</button>
+            <button id="addPlanningEventBtn">Gérer les Présences/Absences</button> <button id="exportPdfBtn">Exporter PDF</button>
+            <button id="exportPngBtn">Exporter PNG</button>
+            <button id="exportJsonBtn">Exporter JSON</button>
+            <button id="importJsonBtn">Importer JSON</button>
+            <button id="showStatsBtn">Afficher Statistiques</button>
+            <button id="themeToggleButton">Thème Sombre</button>
 
-            <button id="addPersonBtn" class="primary-button">Ajouter une personne</button>
-            <div class="section-title">Personnes Habilitées</div>
-            <ul id="peopleList" class="people-list">
-                </ul>
-
-            <button id="addPlanningEventBtn" class="primary-button">Ajouter un événement au planning</button>
-            <button id="exportPlanningBtn" class="secondary-button">Exporter le planning</button>
-
-            <div class="theme-toggle">
-                <button id="themeToggleButton">Thème Sombre</button>
-            </div>
-            <div class="app-footer">
-                <p>&copy; <span id="currentYear"></span> The Electri-Cal. Tous droits réservés.</p>
+            <div class="people-list-container glass-effect">
+                <h3>Personnes habilitées</h3>
+                <ul id="peopleList" class="compact-list">
+                    </ul>
             </div>
         </aside>
 
-        <main class="main-content">
+        <section class="main-content">
             <div id="calendar"></div>
-        </main>
-    </div>
+        </section>
+    </main>
 
     <div id="modalsContainer"></div>
-    <div id="toastsContainer"></div>
+    <div id="toastsContainer" aria-live="polite" aria-atomic="true"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales/fr.global.min.js"></script>
+    <footer>
+        <p>&copy; <span id="currentYear"></span>. <span id="appInfo"></span></p> </footer>
 
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/locales-all.min.js'></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/customParseFormat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isBetween.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/weekday.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/weekday.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 
     <script src="app.js"></script>
 </body>
