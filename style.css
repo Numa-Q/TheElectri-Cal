@@ -20,6 +20,8 @@
     --footer-text-color: #555;
     --person-item-bg: rgba(255, 255, 255, 0.6); /* Fond pour les éléments de liste de personnes */
     --person-item-hover-bg: rgba(255, 255, 255, 0.8);
+    --input-bg: rgba(255, 255, 255, 0.7);
+    --input-border-focus: rgba(255, 127, 80, 0.3);
 }
 
 /* Thème sombre */
@@ -42,6 +44,8 @@ body.dark-mode {
     --footer-text-color: #bbb;
     --person-item-bg: rgba(0, 0, 0, 0.6);
     --person-item-hover-bg: rgba(0, 0, 0, 0.8);
+    --input-bg: rgba(0, 0, 0, 0.7);
+    --input-border-focus: rgba(95, 116, 141, 0.3);
 }
 
 
@@ -74,31 +78,34 @@ main {
 }
 
 /* Base Glassmorphism pour les éléments principaux */
-.glass-effect {
+/* ATTENTION: Cette classe était un @extend dans un préprocesseur. En CSS pur, les propriétés sont répétées. */
+/* Ne pas utiliser @extend en CSS pur. Les propriétés sont appliquées directement aux sélecteurs concernés. */
+.glass-effect-base { /* Renommée pour éviter la confusion avec un @extend */
     background: var(--main-bg-color);
     border-radius: 16px;
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px); /* Effet de flou */
     -webkit-backdrop-filter: blur(10px); /* Pour Safari */
     border: 1px solid var(--border-color);
-    padding: 20px; /* Padding par défaut, peut être ajusté */
     transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .sidebar {
-    background: var(--main-bg-color); /* Applique l'effet glassmorphism */
+    /* Applique les propriétés de glass-effect-base directement */
+    background: var(--main-bg-color);
     border-radius: 16px;
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--border-color);
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+
     padding: 20px;
     flex: 0 0 250px; /* Largeur légèrement augmentée pour la sidebar */
     display: flex;
     flex-direction: column;
     gap: 12px; /* Espacement un peu plus grand */
     color: var(--sidebar-text-color);
-    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .sidebar h2 {
@@ -125,21 +132,22 @@ main {
 }
 
 .main-content {
-    background: var(--main-bg-color); /* Applique l'effet glassmorphism */
+    /* Applique les propriétés de glass-effect-base directement */
+    background: var(--main-bg-color);
     border-radius: 16px;
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border: 1px solid var(--border-color);
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+
     padding: 20px;
     flex-grow: 1;
-    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 #calendar {
     max-width: 100%;
     margin: 0 auto;
-    /* Styles spécifiques pour FullCalendar à harmoniser */
     font-size: 0.9em; /* Ajustement de la taille de police pour le calendrier */
 }
 
@@ -170,6 +178,8 @@ main {
     font-size: 0.85em;
     padding: 2px 5px;
     border-radius: 4px;
+    /* Assurer que le texte est lisible sur les événements */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
 }
 /* Ajoutez d'autres sélecteurs FullCalendar au besoin pour l'harmonisation */
 
@@ -187,6 +197,7 @@ main {
     background-color: rgba(0,0,0,0.6); /* Fond plus sombre pour mieux contraster la modale */
     justify-content: center;
     align-items: center;
+    /* Correction: S'assurer que le display flex est actif quand la modale est visible */
 }
 
 .modal-content {
@@ -198,9 +209,12 @@ main {
     width: 90%;
     max-width: 550px;
     box-shadow: 0 8px 16px rgba(0,0,0,0.3); /* Ombre plus profonde */
-    position: relative;
+    position: relative; /* Important pour que le close-button soit positionné par rapport à lui */
     color: var(--text-color);
     transition: background-color 0.3s ease, color 0.3s ease;
+
+    /* Assurer que le contenu de la modale est au-dessus du fond gris */
+    z-index: 1001; /* Doit être supérieur au z-index du .modal */
 }
 
 .modal-content h2 {
@@ -223,18 +237,9 @@ main {
     margin-bottom: 15px;
     border: 1px solid var(--border-color);
     border-radius: 5px;
-    background-color: rgba(255, 255, 255, 0.7); /* Fond légèrement transparent */
+    background-color: var(--input-bg); /* Utilise la variable */
     color: var(--text-color);
     transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-body.dark-mode .modal-content input[type="text"],
-body.dark-mode .modal-content input[type="date"],
-body.dark-mode .modal-content input[type="number"],
-body.dark-mode .modal-content select {
-    background-color: rgba(0, 0, 0, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: var(--text-color);
 }
 
 .modal-content input[type="text"]:focus,
@@ -243,7 +248,7 @@ body.dark-mode .modal-content select {
 .modal-content select:focus {
     border-color: var(--button-bg);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(255, 127, 80, 0.3); /* Ombre focus */
+    box-shadow: 0 0 0 2px var(--input-border-focus); /* Utilise la variable */
 }
 
 
@@ -371,6 +376,14 @@ footer {
 .people-list-container {
     padding: 15px;
     margin-top: 20px;
+    /* Applique les propriétés de glass-effect-base directement */
+    background: var(--main-bg-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .compact-list {
