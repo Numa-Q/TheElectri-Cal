@@ -1,21 +1,65 @@
 /* style.css */
 
+/* Variables CSS pour les couleurs du thème clair */
+:root {
+    --bg-gradient-start: #fceabb; /* Couleur chaude douce */
+    --bg-gradient-end: #f8b500;   /* Couleur chaude plus intense */
+    --main-bg-color: rgba(255, 255, 255, 0.4); /* Fond glassmorphism clair */
+    --border-color: rgba(255, 255, 255, 0.3);
+    --text-color: #333;
+    --header-bg: #e9a600; /* Une couleur qui s'harmonise avec le dégradé */
+    --button-bg: #ff7f50; /* Corail, pour un bouton chaleureux */
+    --button-hover-bg: #e6673d;
+    --sidebar-text-color: #444;
+    --modal-bg: rgba(255, 255, 255, 0.9);
+    --toast-info-bg: #17a2b8;
+    --toast-success-bg: #28a745;
+    --toast-error-bg: #dc3545;
+    --toast-text-color: white;
+    --footer-bg: rgba(255, 255, 255, 0.5);
+    --footer-text-color: #555;
+}
+
+/* Thème sombre */
+body.dark-mode {
+    --bg-gradient-start: #353b48; /* Dégradé sombre doux */
+    --bg-gradient-end: #2f3640;   /* Dégradé sombre plus profond */
+    --main-bg-color: rgba(0, 0, 0, 0.4); /* Fond glassmorphism sombre */
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-color: #f0f0f0;
+    --header-bg: #2c313a;
+    --button-bg: #5f748d; /* Bleu-gris plus sombre */
+    --button-hover-bg: #4a5d73;
+    --sidebar-text-color: #e0e0e0;
+    --modal-bg: rgba(45, 45, 45, 0.9);
+    --toast-info-bg: #0d47a1; /* Bleu plus foncé */
+    --toast-success-bg: #1b5e20; /* Vert plus foncé */
+    --toast-error-bg: #b71c1c; /* Rouge plus foncé */
+    --toast-text-color: white;
+    --footer-bg: rgba(0, 0, 0, 0.5);
+    --footer-text-color: #bbb;
+}
+
+
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Police plus moderne */
     margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    background-color: #f4f7f6;
+    background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
+    color: var(--text-color);
+    transition: background 0.3s ease, color 0.3s ease; /* Transition douce pour le thème */
 }
 
 header {
-    background-color: #4CAF50;
+    background-color: var(--header-bg);
     color: white;
     padding: 15px 20px;
     text-align: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Ombre plus prononcée */
+    transition: background-color 0.3s ease;
 }
 
 main {
@@ -25,49 +69,83 @@ main {
     gap: 20px;
 }
 
+/* Base Glassmorphism pour les éléments principaux */
+.glass-effect {
+    background: var(--main-bg-color);
+    border-radius: 16px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px); /* Effet de flou */
+    -webkit-backdrop-filter: blur(10px); /* Pour Safari */
+    border: 1px solid var(--border-color);
+    padding: 20px; /* Padding par défaut, peut être ajusté */
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
 .sidebar {
-    background-color: #ffffff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    flex: 0 0 200px; /* Largeur fixe pour la sidebar */
+    @extend .glass-effect; /* Applique l'effet glassmorphism */
+    flex: 0 0 250px; /* Largeur légèrement augmentée pour la sidebar */
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px; /* Espacement un peu plus grand */
+    color: var(--sidebar-text-color);
 }
 
 .sidebar h2 {
     margin-top: 0;
-    color: #333;
+    color: var(--text-color);
+    font-size: 1.5em; /* Taille de police ajustée */
 }
 
 .sidebar button {
-    background-color: #007bff;
-    color: white;
-    padding: 10px 15px;
+    background-color: var(--button-bg);
+    color: var(--toast-text-color); /* Texte blanc pour les boutons */
+    padding: 12px 15px; /* Padding légèrement augmenté */
     border: none;
-    border-radius: 5px;
+    border-radius: 8px; /* Bordures plus arrondies */
     cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.2s ease;
+    font-size: 1em;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Petite ombre pour les boutons */
 }
 
 .sidebar button:hover {
-    background-color: #0056b3;
+    background-color: var(--button-hover-bg);
+    transform: translateY(-2px); /* Léger effet de soulèvement */
 }
 
 .main-content {
+    @extend .glass-effect; /* Applique l'effet glassmorphism */
     flex-grow: 1;
-    background-color: #ffffff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 #calendar {
     max-width: 100%;
     margin: 0 auto;
+    /* Styles spécifiques pour FullCalendar à harmoniser */
+    font-size: 0.9em; /* Ajustement de la taille de police pour le calendrier */
 }
+
+/* Ajustements pour FullCalendar pour le thème */
+.fc .fc-button {
+    background-color: var(--button-bg);
+    color: var(--toast-text-color);
+    border: none;
+    transition: background-color 0.2s ease;
+}
+.fc .fc-button:hover {
+    background-color: var(--button-hover-bg);
+}
+.fc-toolbar-title {
+    color: var(--text-color);
+}
+.fc-daygrid-day-number {
+    color: var(--text-color);
+}
+.fc-col-header-cell-cushion {
+    color: var(--text-color);
+}
+/* Ajoutez d'autres sélecteurs FullCalendar au besoin pour l'harmonisation */
+
 
 /* Styles pour les modales */
 .modal {
@@ -79,37 +157,74 @@ main {
     width: 100%; /* Full width */
     height: 100%; /* Full height */
     overflow: auto; /* Enable scroll if needed */
-    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    background-color: rgba(0,0,0,0.6); /* Fond plus sombre pour mieux contraster la modale */
     justify-content: center;
     align-items: center;
 }
 
 .modal-content {
-    background-color: #fefefe;
+    background-color: var(--modal-bg);
     margin: auto;
-    padding: 20px;
-    border: 1px solid #888;
-    border-radius: 8px;
-    width: 80%; /* Could be more specific */
-    max-width: 500px;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    padding: 30px; /* Plus de padding */
+    border: 1px solid var(--border-color);
+    border-radius: 12px; /* Bordures plus douces */
+    width: 90%;
+    max-width: 550px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3); /* Ombre plus profonde */
     position: relative;
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.modal-content h2 {
+    color: var(--text-color);
 }
 
 .close-button {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
+    color: var(--text-color);
+    position: absolute; /* Position absolue pour la croix de fermeture */
+    top: 15px;
+    right: 20px;
+    font-size: 32px; /* Plus grande */
     font-weight: bold;
     cursor: pointer;
+    transition: color 0.2s ease;
 }
 
 .close-button:hover,
 .close-button:focus {
-    color: black;
+    color: var(--button-hover-bg); /* Couleur au survol */
     text-decoration: none;
-    cursor: pointer;
 }
+
+.modal-content button {
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#cancelModalBtn {
+    background-color: #6c757d; /* Gris par défaut */
+    color: white;
+    margin-right: 10px;
+}
+#cancelModalBtn:hover {
+    background-color: #5a6268;
+    transform: translateY(-2px);
+}
+
+#confirmModalBtn {
+    background-color: var(--button-bg); /* Utilise la couleur du bouton principal */
+    color: white;
+}
+#confirmModalBtn:hover {
+    background-color: var(--button-hover-bg);
+    transform: translateY(-2px);
+}
+
 
 /* Styles pour les toasts */
 #toastsContainer {
@@ -123,14 +238,16 @@ main {
 }
 
 .toast {
-    background-color: #333;
-    color: white;
-    padding: 10px 15px;
-    border-radius: 5px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    background-color: var(--toast-info-bg); /* Couleur par défaut */
+    color: var(--toast-text-color);
+    padding: 12px 18px; /* Plus de padding */
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     opacity: 0;
     transform: translateY(20px);
-    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out, background-color 0.3s ease;
+    min-width: 250px; /* Largeur minimale */
+    text-align: center;
 }
 
 .toast.show {
@@ -139,13 +256,46 @@ main {
 }
 
 .toast.success {
-    background-color: #28a745;
+    background-color: var(--toast-success-bg);
 }
 
 .toast.error {
-    background-color: #dc3545;
+    background-color: var(--toast-error-bg);
 }
 
 .toast.info {
-    background-color: #17a2b8;
+    background-color: var(--toast-info-bg);
+}
+
+/* Pied de page */
+footer {
+    margin-top: auto; /* Pousse le footer vers le bas */
+    padding: 15px 20px;
+    text-align: center;
+    background: var(--footer-bg);
+    color: var(--footer-text-color);
+    font-size: 0.9em;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    border-top: 1px solid var(--border-color);
+    transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Bouton pour basculer le thème (à ajouter dans l'HTML/JS) */
+#themeToggleButton {
+    background-color: var(--button-bg);
+    color: var(--toast-text-color);
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin-top: 15px; /* Pour le positionner dans la sidebar */
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+#themeToggleButton:hover {
+    background-color: var(--button-hover-bg);
+    transform: translateY(-2px);
 }
