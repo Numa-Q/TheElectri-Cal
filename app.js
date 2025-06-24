@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.39"; // INCEMENTATION : Export PDF en mode tableau (Lun-Ven), toast pour PNG, correction régressions visuelles
+const APP_VERSION = "v20.40"; // INCEMENTATION : Export PDF Lun-Ven, FR, couleurs, pagination, timestamp, fix CSS sidebar/layout
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -150,12 +150,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addPlanningEventBtn = document.getElementById('addPlanningEventBtn');
     if (addPlanningEventBtn) addPlanningEventBtn.addEventListener('click', () => showAddPlanningEventModal());
 
-    // MODIFIÉ : Les boutons export appellent maintenant la modale d'options
     const exportPdfBtn = document.getElementById('exportPdfBtn');
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', () => showExportOptionsModal('pdf'));
 
     const exportPngBtn = document.getElementById('exportPngBtn');
-    // MODIFIÉ : Affiche un toast pour le bouton PNG
     if (exportPngBtn) exportPngBtn.addEventListener('click', () => showToast("Fonctionnalité à venir.", "info"));
 
     const exportJsonBtn = document.getElementById('exportJsonBtn');
@@ -670,7 +668,7 @@ function showAddPlanningEventModal(startStr = '', endStr = '') {
     const personOptions = people.map(p => ({ value: p.id, label: p.name }));
     const eventTypeOptions = [
         { value: 'permanence', label: 'Permanence' },
-        { value: 'permanence_backup', label: 'Permanence (Backup)' }, // NOUVEAU
+        { value: 'permanence_backup', label: 'Permanence (Backup)' },
         { value: 'telework_punctual', label: 'Télétravail (ponctuel)' },
         { value: 'telework_recurrent', label: 'Télétravail (récurrent)' },
         { value: 'leave', label: 'Congé' }
@@ -770,7 +768,7 @@ async function addPlanningEvent() {
         const recurrenceEndDateInput = document.getElementById('recurrenceEndDate');
         const recurrenceEndDate = recurrenceEndDateInput ? recurrenceEndDateInput.value : '';
 
-        const endRecurrenceDayjs = dayjs(recururrenceEndDate);
+        const endRecurrenceDayjs = dayjs(recurrenceEndDate);
         if (recurrenceDays.length === 0 || !recurrenceEndDate || !endRecurrenceDayjs.isValid()) {
             showToast('Pour le télétravail récurrent, veuillez sélectionner les jours et fournir une date de fin de récurrence valide.', 'error');
             return;
@@ -808,7 +806,7 @@ function showEditPlanningEventModal(eventId) {
     const personOptions = people.map(p => ({ value: p.id, label: p.name }));
     const eventTypeOptions = [
         { value: 'permanence', label: 'Permanence' },
-        { value: 'permanence_backup', label: 'Permanence (Backup)' }, // NOUVEAU
+        { value: 'permanence_backup', label: 'Permanence (Backup)' },
         { value: 'telework_punctual', label: 'Télétravail (ponctuel)' },
         { value: 'telework_recurrent', label: 'Télétravail (récurrent)' },
         { value: 'leave', label: 'Congé' }
@@ -1051,7 +1049,7 @@ function showExportOptionsModal(exportType) {
 
 
     const content = `
-        <p>Génère un PDF listant les permanences par semaine sous forme de tableau.</p>
+        <p>Génère un PDF listant les permanences par semaine sous forme de tableau (du Lundi au Vendredi).</p>
         ${createDatePicker('pdfExportStartDate', 'Date de début de la période', defaultStartDate, true)}
         ${createDatePicker('pdfExportEndDate', 'Date de fin de la période', defaultEndDate, true)}
     `;
@@ -1086,7 +1084,6 @@ function generatePermanencePdfTable() {
 
     const doc = new jspdf.jsPDF('p', 'mm', 'a4');
     doc.setFont('helvetica'); // Use a standard font
-    doc.setFontSize(10);
 
     const margin = 10; // mm
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -1096,25 +1093,38 @@ function generatePermanencePdfTable() {
     const lineHeight = 7; // mm par ligne de texte (dates, permanences, backups)
     const weekBlockHeight = 3 * lineHeight; // 3 lignes par semaine
     const weekSpacing = 5; // mm d'espace entre les blocs de semaines
+    const footerHeight = 10; // Espace pour la pagination et le timestamp
+
+    // Couleurs spécifiques pour le PDF
+    const PDF_HEADER_BG_COLOR = '#F0F0F0'; // Gris clair
+    const PDF_PERMANENCE_TEXT_COLOR = EVENT_COLORS.permanence;
+    const PDF_BACKUP_TEXT_COLOR = EVENT_COLORS.permanence_backup;
+    const PDF_DEFAULT_TEXT_COLOR = '#333333';
 
     let currentY = margin;
 
-    // Fonction pour ajouter le titre de la page
-    const addPageHeader = (startD, endD) => {
+    // Fonction pour ajouter le titre de la page et les footers
+    const addPageLayout = (pageNum, totalPages) => {
         doc.setFontSize(14);
-        doc.text(`Planning des Permanences : ${startD.format('DD/MM/YYYY')} - ${endD.format('DD/MM/YYYY')}`, pageWidth / 2, currentY, { align: 'center' });
-        doc.setFontSize(10);
-        currentY += 10; // Espace après le titre
+        doc.setTextColor(PDF_DEFAULT_TEXT_COLOR);
+        doc.text(`Planning des Permanences : ${startDate.format('DD/MM/YYYY')} - ${endDate.format('DD/MM/YYYY')}`, pageWidth / 2, margin + 5, { align: 'center' });
+        
+        doc.setFontSize(8);
+        const generatedTime = dayjs().format('DD/MM/YYYY HH:mm');
+        doc.text(`Généré le: ${generatedTime}`, margin, pageHeight - margin + footerHeight / 2, { align: 'left' });
+        doc.text(`Page ${pageNum}/${totalPages}`, pageWidth - margin, pageHeight - margin + footerHeight / 2, { align: 'right' });
+        
+        currentY = margin + 15; // Reset currentY after header
     };
 
-    addPageHeader(startDate, endDate);
-    currentY += 5; // Espace initial après le header
-
-    // Agrégation des données par jour
+    // Agrégation des données par jour (Lun-Ven uniquement)
     const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: [pName], permanence_backup: [pName] } }
     let tempDate = dayjs(startDate);
     while (tempDate.isSameOrBefore(endDate, 'day')) {
-        dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), permanence_backup: new Set() };
+        // Collecter les données uniquement pour les jours de semaine (Lundi=1 à Vendredi=5)
+        if (tempDate.weekday() >= 1 && tempDate.weekday() <= 5) {
+            dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), permanence_backup: new Set() };
+        }
         tempDate = tempDate.add(1, 'day');
     }
 
@@ -1133,7 +1143,7 @@ function generatePermanencePdfTable() {
         let loopEndDate = dayjs.min(eventEndDate, endDate);
 
         while (day.isSameOrBefore(loopEndDate, 'day')) {
-            // Inclure seulement les jours de semaine (Lundi=1 à Vendredi=5)
+            // Ajouter les événements uniquement pour les jours de semaine (Lundi=1 à Vendredi=5)
             if (day.weekday() >= 1 && day.weekday() <= 5) {
                 const dateKey = day.format('YYYY-MM-DD');
                 if (dailyPermanences[dateKey]) { // S'assurer que le jour est dans la période d'export
@@ -1148,58 +1158,105 @@ function generatePermanencePdfTable() {
         }
     });
 
-    // Début du rendu par semaine
-    let currentWeekStart = dayjs(startDate).startOf('week').add(1, 'day'); // Commence au lundi de la première semaine
-    if (currentWeekStart.day() === 0) currentWeekStart = currentWeekStart.add(1, 'day'); // Si startOf('week') est Dimanche, passe au Lundi
+    // Stocker le contenu à rendre pour ensuite ajouter la pagination
+    const contentToRender = [];
+    let currentWeekStart = dayjs(startDate).startOf('week', { weekStart: 1 }); // Commence au lundi de la première semaine
 
-    // Ajuste currentWeekStart pour qu'il soit le lundi de la semaine contenant startDate, ou startDate si c'est un lundi.
-    currentWeekStart = dayjs(startDate).startOf('week', { weekStart: 1 }); // Force le début de semaine au Lundi
+    while (currentWeekStart.isSameOrBefore(endDate, 'day')) { // Continue tant que le Lundi de la semaine est avant ou égal à la fin de la période
+        // On ne traite que les semaines qui ont au moins un jour dans la plage selectionnée.
+        // Et on ne va pas au-delà de la date de fin de la période pour la semaine en cours.
+        const weekData = {
+            dates: [],
+            permanences: [],
+            backups: []
+        };
+        let isWeekRelevant = false;
 
-    while (currentWeekStart.isSameOrBefore(endDate, 'week')) {
-        // Ajouter une nouvelle page si la semaine ne rentre pas
-        if (currentY + weekBlockHeight + weekSpacing > pageHeight - margin) {
-            doc.addPage();
-            currentY = margin;
-            addPageHeader(startDate, endDate); // Ré-ajouter le header sur la nouvelle page
-            currentY += 5; // Espace après le header de la nouvelle page
-        }
-
-        // --- Ligne des Dates ---
-        let tempX = margin;
-        doc.setFontSize(9); // Taille légèrement plus petite pour les dates
-        for (let i = 0; i < columnCount; i++) {
+        for (let i = 0; i < columnCount; i++) { // 5 jours : Lundi à Vendredi
             const dayDate = currentWeekStart.add(i, 'day');
-            doc.text(dayDate.format('ddd DD/MM'), tempX + colWidth / 2, currentY, { align: 'center', maxWidth: colWidth - 2 });
-            tempX += colWidth;
+            const dateKey = dayDate.format('YYYY-MM-DD');
+
+            weekData.dates.push(dayDate.locale('fr').format('ddd DD/MM'));
+            
+            if (dailyPermanences[dateKey]) {
+                isWeekRelevant = true; // Cette semaine contient des données pour la période d'export
+                weekData.permanences.push(Array.from(dailyPermanences[dateKey].permanence).join(', '));
+                weekData.backups.push(Array.from(dailyPermanences[dateKey].permanence_backup).join(', '));
+            } else {
+                weekData.permanences.push('');
+                weekData.backups.push('');
+            }
         }
+        
+        if (isWeekRelevant || currentWeekStart.isSameOrBefore(endDate, 'week')) {
+            // Ajouter la semaine si elle est pertinente ou si on est encore dans la plage de semaines
+            contentToRender.push(weekData);
+        }
+
+        currentWeekStart = currentWeekStart.add(1, 'week');
+        if (currentWeekStart.day() !== 1) { // S'assurer qu'on avance au Lundi suivant si Day.js est configuré pour une autre semaine
+             currentWeekStart = currentWeekStart.startOf('week', { weekStart: 1 });
+        }
+    }
+
+
+    // Rendu du contenu dans le PDF
+    let pageNum = 1;
+    addPageLayout(pageNum, 0); // Total pages is 0 for now, will be updated later
+
+    contentToRender.forEach((weekData, index) => {
+        // Ajouter une nouvelle page si la semaine ne rentre pas
+        if (currentY + weekBlockHeight + weekSpacing > pageHeight - margin - footerHeight) {
+            doc.addPage();
+            pageNum++;
+            addPageLayout(pageNum, 0); // Update pageNum, totalPages is still placeholder
+        }
+        
+        let tempX = margin;
+        
+        // --- Ligne des Dates (avec fond coloré) ---
+        doc.setFillColor(PDF_HEADER_BG_COLOR);
+        doc.rect(margin, currentY, pageWidth - 2 * margin, lineHeight, 'F'); // Dessine le fond
+        doc.setFontSize(9);
+        doc.setTextColor(PDF_DEFAULT_TEXT_COLOR); // Texte des dates
+        weekData.dates.forEach(dateText => {
+            doc.text(dateText, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 }); // +1 pour alignement vertical
+            tempX += colWidth;
+        });
         currentY += lineHeight;
 
         // --- Ligne des Permanences ---
         tempX = margin;
-        doc.setFontSize(10); // Retour à la taille normale
-        for (let i = 0; i < columnCount; i++) {
-            const dayDate = currentWeekStart.add(i, 'day');
-            const dateKey = dayDate.format('YYYY-MM-DD');
-            const permanences = Array.from(dailyPermanences[dateKey]?.permanence || []).join(', ');
-            doc.text(permanences, tempX + colWidth / 2, currentY, { align: 'center', maxWidth: colWidth - 2 });
+        doc.setFontSize(10);
+        doc.setTextColor(PDF_PERMANENCE_TEXT_COLOR); // Texte des permanences
+        weekData.permanences.forEach(permanenceText => {
+            doc.text(permanenceText, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
             tempX += colWidth;
-        }
+        });
         currentY += lineHeight;
 
         // --- Ligne des Permanences Backup ---
         tempX = margin;
-        for (let i = 0; i < columnCount; i++) {
-            const dayDate = currentWeekStart.add(i, 'day');
-            const dateKey = dayDate.format('YYYY-MM-DD');
-            const backups = Array.from(dailyPermanences[dateKey]?.permanence_backup || []).join(', ');
-            doc.text(backups, tempX + colWidth / 2, currentY, { align: 'center', maxWidth: colWidth - 2 });
+        doc.setTextColor(PDF_BACKUP_TEXT_COLOR); // Texte des backups
+        weekData.backups.forEach(backupText => {
+            doc.text(backupText, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
             tempX += colWidth;
-        }
+        });
         currentY += lineHeight;
 
         currentY += weekSpacing; // Espacement après la semaine
+    });
 
-        currentWeekStart = currentWeekStart.add(1, 'week'); // Passer à la semaine suivante
+    // Ajout de la pagination et de l'horodatage sur chaque page
+    const totalPages = doc.internal.pages.length;
+    const generatedTime = dayjs().format('DD/MM/YYYY HH:mm');
+
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(PDF_DEFAULT_TEXT_COLOR);
+        doc.text(`Généré le: ${generatedTime}`, margin, pageHeight - margin + footerHeight / 2, { align: 'left' });
+        doc.text(`Page ${i}/${totalPages}`, pageWidth - margin, pageHeight - margin + footerHeight / 2, { align: 'right' });
     }
 
     doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}.pdf`);
@@ -1243,7 +1300,7 @@ function generateAndDisplayStats() {
         return;
     }
 
-    // MODIFIÉ : Initialiser les stats pour TOUTES les personnes
+    // Initialiser les stats pour TOUTES les personnes
     const stats = {};
     people.forEach(person => {
         stats[person.id] = {
@@ -1253,7 +1310,7 @@ function generateAndDisplayStats() {
     });
 
     allCalendarEvents.forEach(event => {
-        // MODIFIÉ : Inclure 'permanence_backup' dans le calcul
+        // Inclure 'permanence_backup' dans le calcul
         if (event.type !== 'permanence' && event.type !== 'permanence_backup') {
             return;
         }
@@ -1296,7 +1353,7 @@ function displayStatsTable(stats) {
             <tbody>
     `;
 
-    // MODIFIÉ : Afficher toutes les personnes, même si permanenceDays est à 0
+    // Afficher toutes les personnes, même si permanenceDays est à 0
     // Trier les personnes par nom avant d'afficher
     const sortedPeopleStats = Object.values(stats).sort((a, b) => a.name.localeCompare(b.name));
 
