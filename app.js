@@ -104,7 +104,7 @@ function showToast(message, type = 'info') {
  * @param {Function} onConfirm - Fonction de rappel à exécuter si l'utilisateur confirme.
  * @param {Function} onCancel - Fonction de rappel à exécuter si l'utilisateur annule (optionnel).
  * @param {boolean} showConfirmButton - Affiche le bouton de confirmation (true par défaut).
- * @param {boolean} showCancelButton - Affiche le bouton d'annulation (true par défaut).
+ * @param {boolean} showCancelButton - Affiche le bouton d'annulation (true par default).
  */
 function showModal(title, contentHtml, onConfirm, onCancel = () => {}, showConfirmButton = true, showCancelButton = true) {
     const modalsContainer = document.getElementById('modalsContainer');
@@ -341,7 +341,7 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
     // Si la sélection est d'un jour unique, la date de fin affichée est la même que la date de début.
     // Si une plage est sélectionnée, la date de fin affichée est la date de fin réelle (endStr - 1 jour).
     let displayEndDate = dayjs(endStr).subtract(1, 'day').format('YYYY-MM-DD');
-    if (startStr === displayEndDate) { // Si la sélection est d'un jour unique (start = end - 1 jour)
+    if (startStr === displayEndDate) { // Si la sélection est d'un jour unique (start = end - 1 day)
         displayEndDate = startStr;
     }
 
@@ -358,6 +358,12 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
             <option value="holiday">Congé</option>
         </select>
 
+        <div class="telework-recurring-checkbox-container" style="display: none; margin-top: 15px;">
+            <label>
+                <input type="checkbox" id="isTeleworkRecurring"> Télétravail répétitif
+            </label>
+        </div>
+
         <div id="dateRangeFields">
             <label for="startDate">Date de début :</label>
             <input type="date" id="startDate" value="${startStr}">
@@ -367,7 +373,7 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
              <p style="font-size: 0.8em; color: gray; margin-top: 5px;">Si jour unique, mettre la même date de début et de fin.</p>
         </div>
 
-        <div id="teleworkRecurringFields" style="display: none;">
+        <div id="teleworkRecurringFields" style="display: none;" class="recurring-options">
             <h4>Jours de télétravail répétitif :</h4>
             <div class="day-checkboxes">
                 <label><input type="checkbox" name="recurringDay" value="1"> Lundi</label>
@@ -395,8 +401,11 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
                 return;
             }
 
-            if (type === 'telework' && document.getElementById('isTeleworkRecurring').checked) {
-                const selectedDays = Array.from(document.querySelectorAll('input[name="recurringDay"]:checked'))
+            // Vérifier si la checkbox de récurrence est visible ET cochée
+            const isRecurringChecked = document.getElementById('isTeleworkRecurring') && document.getElementById('isTeleworkRecurring').checked;
+
+            if (type === 'telework' && isRecurringChecked) {
+                const selectedDays = Array.from(document.querySelectorAll('#teleworkRecurringFields input[name="recurringDay"]:checked'))
                                        .map(cb => parseInt(cb.value));
                 const recurringUntilDate = document.getElementById('recurringUntilDate').value;
 
@@ -437,58 +446,37 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
     const eventTypeSelect = document.getElementById('eventType');
     const dateRangeFields = document.getElementById('dateRangeFields');
     const teleworkRecurringFields = document.getElementById('teleworkRecurringFields');
-
-    // Ajout d'une case à cocher "Répétitif" pour le télétravail
-    const teleworkTypeOption = document.querySelector('#eventType option[value="telework"]');
-    if (teleworkTypeOption && !teleworkTypeOption.dataset.hasRecurringCheckbox) {
-        const checkboxHtml = `
-            <div style="margin-top: 15px;">
-                <label>
-                    <input type="checkbox" id="isTeleworkRecurring"> Télétravail répétitif
-                </label>
-            </div>
-        `;
-        dateRangeFields.insertAdjacentHTML('afterend', checkboxHtml);
-        teleworkTypeOption.dataset.hasRecurringCheckbox = 'true'; // Marque pour éviter de dupliquer
-    }
-
+    const teleworkRecurringCheckboxContainer = document.querySelector('.telework-recurring-checkbox-container');
     const isTeleworkRecurringCheckbox = document.getElementById('isTeleworkRecurring');
 
 
     const updateVisibility = () => {
         const selectedType = eventTypeSelect.value;
 
-        // Réinitialiser la visibilité de la case à cocher pour le télétravail répétitif
-        if (isTeleworkRecurringCheckbox) {
-            isTeleworkRecurringCheckbox.parentElement.style.display = 'none';
-            isTeleworkRecurringCheckbox.checked = false; // Réinitialiser l'état
-        }
+        // Réinitialiser l'état des éléments
+        dateRangeFields.style.display = 'block';
+        teleworkRecurringFields.style.display = 'none';
+        teleworkRecurringCheckboxContainer.style.display = 'none';
+        isTeleworkRecurringCheckbox.checked = false; // Important: décocher à chaque changement de type
 
         if (selectedType === 'telework') {
-            dateRangeFields.style.display = 'block';
-            if (isTeleworkRecurringCheckbox) {
-                isTeleworkRecurringCheckbox.parentElement.style.display = 'block';
-            }
-            if (isTeleworkRecurringCheckbox && isTeleworkRecurringCheckbox.checked) {
+            teleworkRecurringCheckboxContainer.style.display = 'block';
+            if (isTeleworkRecurringCheckbox.checked) {
+                dateRangeFields.style.display = 'none';
                 teleworkRecurringFields.style.display = 'block';
-                dateRangeFields.style.display = 'none'; // Masquer les dates simples si récurrent
             } else {
+                dateRangeFields.style.display = 'block';
                 teleworkRecurringFields.style.display = 'none';
             }
         } else if (selectedType === 'permanence' || selectedType === 'holiday') {
             dateRangeFields.style.display = 'block';
-            teleworkRecurringFields.style.display = 'none';
         }
     };
 
     eventTypeSelect.addEventListener('change', updateVisibility);
+    isTeleworkRecurringCheckbox.addEventListener('change', updateVisibility);
 
-    if (isTeleworkRecurringCheckbox) {
-        isTeleworkRecurringCheckbox.addEventListener('change', updateVisibility);
-    }
-
-    // Déclencher le changement initialement pour masquer/afficher les bons champs
-    // Cela assure que la modale s'affiche correctement au premier affichage
+    // Déclencher la fonction de mise à jour au chargement de la modale
     updateVisibility();
 }
 
@@ -599,6 +587,7 @@ function addRecurringTelework(personId, personName, daysOfWeek, untilDateStr) {
 
     while (currentDate.isBefore(untilDate) || currentDate.isSame(untilDate, 'day')) {
         // dayjs().day() retourne 0 pour dimanche, 1 pour lundi, etc.
+        // On veut tester si le jour de la semaine de currentDate est inclus dans daysOfWeek.
         if (daysOfWeek.includes(currentDate.day())) {
             // Ajouter un événement de télétravail pour ce jour
             addEventToCalendar(personId, personName, 'telework', currentDate.format('YYYY-MM-DD'), currentDate.add(1, 'day').format('YYYY-MM-DD'));
