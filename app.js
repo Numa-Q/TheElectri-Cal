@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.47"; // INCEMENTATION : PDF tous les jours (week-end grisés), noms des jours forcés en FR
+const APP_VERSION = "v20.47"; // INCEMENTATION : Correction de la double pagination du PDF
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -1194,20 +1194,22 @@ async function generatePermanencePdfTable(startDate, endDate) {
     let currentY = margin;
     let pageNum = 1;
 
-    // Fonction pour ajouter le titre de la page et les footers
+    // MODIFIÉ : Fonction pour ajouter le titre de la page et les footers
     // `totalPages` sera mis à jour lors du deuxième passage
-    const addPageLayout = (docInstance, pageNum, totalPages) => {
+    const addPageLayout = (docInstance, currentPageNum, totalPages, isFirstPass = true) => {
         // En-tête
         docInstance.setFontSize(14);
         docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
         docInstance.text(`Planning des Permanences : ${startDate.format('DD/MM/YYYY')} - ${endDate.format('DD/MM/YYYY')}`, pageWidth / 2, margin + 5, { align: 'center' });
         
-        // Pied de page (position ajustée)
-        docInstance.setFontSize(8);
-        docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
-        const generatedTime = dayjs().format('DD/MM/YYYY HH:mm');
-        docInstance.text(`Généré le: ${generatedTime}`, margin, pageHeight - margin + 3, { align: 'left' });
-        docInstance.text(`Page ${pageNum}/${totalPages || 0}`, pageWidth - margin, pageHeight - margin + 3, { align: 'right' });
+        // Pied de page (position ajustée) - Seulement si le totalPages est connu (deuxième passage)
+        if (!isFirstPass) { // Seulement au deuxième passage pour avoir le total des pages
+            docInstance.setFontSize(8);
+            docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
+            const generatedTime = dayjs().format('DD/MM/YYYY HH:mm');
+            docInstance.text(`Généré le: ${generatedTime}`, margin, pageHeight - margin + 3, { align: 'left' });
+            docInstance.text(`Page ${currentPageNum}/${totalPages || 0}`, pageWidth - margin, pageHeight - margin + 3, { align: 'right' });
+        }
         
         return margin + 15; // Retourne la position Y après l'en-tête
     };
@@ -1219,22 +1221,8 @@ async function generatePermanencePdfTable(startDate, endDate) {
 
     // Groupement des données par semaine (7 jours par semaine)
     const weeksData = [];
-    // Trouver le premier lundi de la semaine de startDate
-    const startOfWeekAdjusted = dayjs(startDate).startOf('week'); // Day.js startOf('week') est Dimanche par défaut
-    // Utiliser .day(1) pour forcer au Lundi
-    let currentWeekStart = startOfWeekAdjusted.day() === 0 ? startOfWeekAdjusted.add(1, 'day') : startOfWeekAdjusted.day(1); // Si dimanche, ajouter 1 jour, sinon le lundi
-    if (currentWeekStart.isAfter(startDate, 'day')) {
-        // If currentWeekStart (Monday) is after startDate, it means startDate is in the previous week's end.
-        // We need to go back to the previous Monday.
-        currentWeekStart = currentWeekStart.subtract(1, 'week');
-    }
     
-    // Assurez-vous que nous commençons la boucle au début de la semaine qui contient startDate.
-    // FullCalendar avec locale 'fr' utilise Lundi comme début de semaine (weekday: 1)
-    // Day.js .startOf('week') sans argument utilise Dimanche (0).
-    // Nous devons donc nous assurer que le 'currentWeekStart' est le Lundi de la semaine.
-    // dayjs().day(1) force au Lundi de la semaine courante.
-    let loopStartDate = dayjs(startDate).startOf('week'); // Ceci sera Dimanche si Day.js par défaut
+    let loopStartDate = dayjs(startDate).startOf('week'); 
     if (loopStartDate.day() === 0) { // Si le début de semaine est Dimanche (0), on avance au Lundi (1)
         loopStartDate = loopStartDate.add(1, 'day');
     } else if (loopStartDate.day() !== 1) { // Si ce n'est ni Dimanche ni Lundi, on va au Lundi précédent
@@ -1244,7 +1232,7 @@ async function generatePermanencePdfTable(startDate, endDate) {
     let currentWeekIter = loopStartDate;
 
 
-    while (currentWeekIter.isSameOrBefore(endDate, 'day') || currentWeekIter.isSame(endDate.endOf('week'), 'day')) {
+    while (currentWeekIter.isSameOrBefore(endDate.endOf('week'), 'day')) { // Assure d'inclure la semaine de endDate
         const week = [];
         for (let i = 0; i < 7; i++) { // Pour chaque jour de la semaine (0 = dimanche, 6 = samedi)
             const currentDay = currentWeekIter.add(i, 'day');
@@ -1273,33 +1261,32 @@ async function generatePermanencePdfTable(startDate, endDate) {
         currentWeekIter = currentWeekIter.add(1, 'week'); // Passer à la semaine suivante
     }
     
-    // Filtrer les semaines qui ne contiennent aucune donnée relevante OU qui ne sont pas dans la période
-    const filteredWeeksData = weeksData.filter(week => {
+    // Filtrer les semaines qui ne contiennent aucune donnée pertinente pour la période d'export.
+    // Une semaine est pertinente si au moins un de ses jours est inclus dans la période [startDate, endDate]
+    // Ou si elle contient des événements (ce qui est déjà géré par la boucle ci-dessus qui couvre toutes les semaines
+    // dont au moins un jour est dans la période)
+    const relevantWeeksData = weeksData.filter(week => {
         return week.some(dayData => {
             const dayDate = dayjs(dayData.date);
-            // Une semaine est pertinente si au moins un jour est dans la période selectionnée
-            // OU si elle contient des événements de permanence/backup
-            const isInPeriod = dayDate.isBetween(startDate, endDate, 'day', '[]');
-            const hasData = dayData.permanenceNames || dayData.backupNames;
-            return isInPeriod || hasData;
+            return dayDate.isBetween(startDate, endDate, 'day', '[]');
         });
     });
 
 
-    if (filteredWeeksData.length === 0) {
+    if (relevantWeeksData.length === 0) {
         showToast("Aucune donnée de permanence à exporter pour la période sélectionnée.", "info", 5000);
         return;
     }
 
-    // --- Rendu du contenu dans le PDF ---
-    currentY = addPageLayout(doc, pageNum, 0); // Dessine l'en-tête de la première page
+    // --- Premier passage : Rendu du contenu dans le PDF pour calculer le nombre de pages ---
+    currentY = addPageLayout(doc, pageNum, 0, true); // Dessine l'en-tête de la première page, sans footer initial
 
-    for (const week of filteredWeeksData) {
+    for (const week of relevantWeeksData) {
         // Gérer les sauts de page avant de dessiner la semaine actuelle
         if (currentY + weekBlockHeight + weekSpacing > pageHeight - margin - footerHeight) {
             doc.addPage();
             pageNum++;
-            currentY = addPageLayout(doc, pageNum, 0); // Dessine l'en-tête de la nouvelle page
+            currentY = addPageLayout(doc, pageNum, 0, true); // Dessine l'en-tête de la nouvelle page, sans footer
         }
         
         let tempX; // Position X pour le dessin des cellules
@@ -1347,7 +1334,7 @@ async function generatePermanencePdfTable(startDate, endDate) {
     const totalPages = doc.internal.pages.length;
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        addPageLayout(doc, i, totalPages); // Redessine le pied de page avec le nombre total de pages correct
+        addPageLayout(doc, i, totalPages, false); // Redessine le pied de page avec le nombre total de pages correct (isFirstPass = false)
     }
 
     doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}.pdf`);
