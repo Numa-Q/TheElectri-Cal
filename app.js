@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.13"; // **INCREMENTATION : Correction du plugin Day.js isSameOrBefore**
+const APP_VERSION = "v20.14"; // INCEMENTATION : Corrections des bugs signalés
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -112,8 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     dayjs.extend(dayjs_plugin_customParseFormat);
     dayjs.extend(dayjs_plugin_isBetween);
     dayjs.extend(dayjs_plugin_weekday);
-    dayjs.extend(dayjs_plugin_isSameOrBefore); // CORRECTION : Utiliser isSameOrBefore
-    // dayjs.extend(dayjs_plugin_isSameOrAfter); // Pas nécessaire si isSameOrBefore suffit
+    dayjs.extend(dayjs_plugin_isSameOrBefore);
 
     try {
         await openDB(); // Ouvre la base de données au démarrage
@@ -141,12 +140,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Gestionnaires d'événements pour les boutons
+    // Gestionnaires d'événements pour les boutons (certains sont maintenant dans l'HTML avec onclick)
     const addPersonBtn = document.getElementById('addPersonBtn');
     if (addPersonBtn) addPersonBtn.addEventListener('click', showAddPersonModal);
 
-    const addPlanningEventBtn = document.getElementById('addPlanningEventBtn');
-    if (addPlanningEventBtn) addPlanningEventBtn.addEventListener('click', showAddPlanningEventModal);
+    // addPlanningEventBtn est maintenant géré par onclick dans l'HTML: showAddPlanningEventModal('', '')
+    // const addPlanningEventBtn = document.getElementById('addPlanningEventBtn');
+    // if (addPlanningEventBtn) addPlanningEventBtn.addEventListener('click', showAddPlanningEventModal);
 
     const exportPdfBtn = document.getElementById('exportPdfBtn');
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportPlanningToPdfMultiMonth);
@@ -611,8 +611,6 @@ function initFullCalendar() {
         },
         eventClick: function(info) {
             const eventId = info.event.id;
-            // const eventType = info.event.extendedProps.type; // Non utilisé
-            // const personId = info.event.extendedProps.personId; // Non utilisé
             showEditPlanningEventModal(eventId);
         },
         select: function(info) {
@@ -666,7 +664,7 @@ function showAddPlanningEventModal(startStr = '', endStr = '') {
                 { label: 'Jeudi', value: '4' },
                 { label: 'Vendredi', value: '5' }
             ], [], 'addRecurrenceDay_')}
-            ${createDatePicker('recurrenceEndDate', 'Fin de récurrence', endOfYear, true, {'default-value': endOfYear})}
+            ${createDatePicker('recurrenceEndDate', 'Fin de récurrence', endOfYear, true)}
         </div>
     `;
 
@@ -686,8 +684,9 @@ function handleEventTypeChange(selectedType) {
 
     if (selectedType === 'telework_recurrent') {
         recurrenceOptionsDiv.style.display = 'block';
+        // MODIFIÉ : Assure que la date de fin de récurrence est pré-remplie si vide
         if (recurrenceEndDateInput && !recurrenceEndDateInput.value) {
-            recurrenceEndDateInput.value = recurrenceEndDateInput.dataset.defaultValue || dayjs().endOf('year').format('YYYY-MM-DD');
+            recurrenceEndDateInput.value = dayjs().endOf('year').format('YYYY-MM-DD');
         }
     } else {
         recurrenceOptionsDiv.style.display = 'none';
@@ -701,9 +700,6 @@ async function addPlanningEvent() {
     const eventType = document.getElementById('eventTypeSelect').value;
     const startDate = document.getElementById('eventStartDate').value;
     const endDate = document.getElementById('eventEndDate').value;
-
-    const recurrenceDays = Array.from(document.querySelectorAll('input[name="recurrenceDays"]:checked')).map(cb => parseInt(cb.value));
-    const recurrenceEndDate = document.getElementById('recurrenceEndDate').value;
 
     if (!personId || !eventType || !startDate) {
         showToast('Veuillez remplir tous les champs requis.', 'error');
@@ -719,6 +715,7 @@ async function addPlanningEvent() {
     const eventColor = EVENT_COLORS[eventType] || '#000000';
 
     const generateEvent = (start, end, recurrenceGroupId = null) => {
+        // La date de fin de FullCalendar est exclusive, donc on ajoute 1 jour
         const finalEnd = end ? dayjs(end).add(1, 'day').format('YYYY-MM-DD') : dayjs(start).add(1, 'day').format('YYYY-MM-DD');
         const eventTypeDisplay = getEventTypeDisplayName(eventType);
 
@@ -737,11 +734,21 @@ async function addPlanningEvent() {
     };
 
     let eventsToAdd = [];
-    if (eventType === 'telework_recurrent' && recurrenceDays.length > 0 && recurrenceEndDate) {
+    if (eventType === 'telework_recurrent') {
+        const recurrenceDays = Array.from(document.querySelectorAll('input[name="recurrenceDays"]:checked')).map(cb => parseInt(cb.value));
+        const recurrenceEndDateInput = document.getElementById('recurrenceEndDate');
+        const recurrenceEndDate = recurrenceEndDateInput ? recurrenceEndDateInput.value : ''; // Assure que la valeur est récupérée
+
+        // MODIFIÉ : Validation plus robuste de la date de fin de récurrence
+        const endRecurrenceDayjs = dayjs(recurrenceEndDate);
+        if (recurrenceDays.length === 0 || !recurrenceEndDate || !endRecurrenceDayjs.isValid()) {
+            showToast('Pour le télétravail récurrent, veuillez sélectionner les jours et fournir une date de fin de récurrence valide.', 'error');
+            return;
+        }
+
         const recurrenceGroupId = crypto.randomUUID(); // Générer un ID unique pour cette série
         let currentDay = dayjs(startDate);
-        const endRecurrenceDayjs = dayjs(recururrenceEndDate);
-
+        
         while (currentDay.isSameOrBefore(endRecurrenceDayjs, 'day')) {
             if (recurrenceDays.includes(currentDay.day())) {
                 eventsToAdd.push(generateEvent(currentDay.format('YYYY-MM-DD'), currentDay.format('YYYY-MM-DD'), recurrenceGroupId));
@@ -779,6 +786,7 @@ function showEditPlanningEventModal(eventId) {
     const startDate = event.start ? dayjs(event.start).format('YYYY-MM-DD') : '';
     let endDate = '';
     if (event.end) {
+        // La date de fin de FullCalendar est exclusive, donc on soustrait 1 jour pour l'afficher correctement
         const endDayjs = dayjs(event.end);
         endDate = endDayjs.subtract(1, 'day').format('YYYY-MM-DD');
     }
@@ -828,6 +836,7 @@ async function editPlanningEvent(eventId) {
     const eventColor = EVENT_COLORS[eventType] || '#000000';
     const eventTypeDisplay = getEventTypeDisplayName(eventType);
 
+    // La date de fin de FullCalendar est exclusive, donc on ajoute 1 jour
     const finalEnd = endDate ? dayjs(endDate).add(1, 'day').format('YYYY-MM-DD') : dayjs(startDate).add(1, 'day').format('YYYY-MM-DD');
 
     const updatedEvent = {
@@ -1058,7 +1067,7 @@ async function exportPlanningToPdfMultiMonth() {
                 }
             } else {
                 finalWidthMm = imgWidthMm;
-                finalHeightMm = imgHeightHeight;
+                finalHeightMm = imgHeightMm;
             }
 
             // Centrer l'image sur la page
