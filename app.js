@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.18"; // INCEMENTATION : Correction Font Awesome et re-check export
+const APP_VERSION = "v20.19"; // INCEMENTATION : Correction SyntaxError et ajout Stats
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -158,7 +158,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (importJsonBtn) importJsonBtn.addEventListener('click', showImportModal);
 
     const showStatsBtn = document.getElementById('showStatsBtn');
-    if (showStatsBtn) showStatsBtn.addEventListener('click', showStatsModal);
+    if (showStatsBtn) showStatsBtn.addEventListener('click', showStatsModal); // <-- Appel de la nouvelle fonction showStatsModal
 });
 
 // Fonctions utilitaires pour le thème
@@ -192,7 +192,7 @@ function showToast(message, type = 'info', duration = 3000) {
 }
 
 // --- Fonctions de gestion des Modales ---
-function showModal(title, contentHtml, buttons = []) { // Inverser l'ordre de title et contentHtml pour correspondre à createAndShowModal
+function showModal(title, contentHtml, buttons = []) {
     let modal = document.getElementById('dynamicModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -200,7 +200,6 @@ function showModal(title, contentHtml, buttons = []) { // Inverser l'ordre de ti
         modal.classList.add('modal');
         document.getElementById('modalsContainer').appendChild(modal);
     }
-    // Nettoyer les écouteurs d'événements précédents si la modale est réutilisée
     const oldCloseButton = modal.querySelector('.close-button');
     if (oldCloseButton) {
         oldCloseButton.removeEventListener('click', closeModal);
@@ -224,10 +223,8 @@ function showModal(title, contentHtml, buttons = []) { // Inverser l'ordre de ti
     setTimeout(() => modal.classList.add('show'), 10);
     document.body.style.overflow = 'hidden'; // Empêche le défilement du body
 
-    // Ajouter l'écouteur d'événement au bouton de fermeture
     modal.querySelector('.close-button').addEventListener('click', closeModal);
 
-    // Fermer la modale si on clique en dehors du contenu
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             closeModal();
@@ -241,10 +238,10 @@ function closeModal() {
         modal.classList.remove('show');
         modal.addEventListener('transitionend', () => {
             modal.style.display = 'none';
-            modal.innerHTML = ''; // Nettoyer le contenu pour éviter les fuites de mémoire
+            modal.innerHTML = '';
         }, { once: true });
     }
-    document.body.style.overflow = ''; // Rétablit le défilement du body
+    document.body.style.overflow = '';
 }
 
 function createAndShowModal(title, content, primaryButtonText, primaryButtonAction, cancelButtonText = 'Annuler', cancelButtonAction = 'closeModal()') {
@@ -329,7 +326,7 @@ async function savePeople() {
     try {
         await clearStore(STORE_PEOPLE);
         for (const person of people) {
-            await putItem(STORE_PEOPLE, person); // Utiliser putItem pour gérer l'ajout et la mise à jour
+            await putItem(STORE_PEOPLE, person);
         }
     } catch (error) {
         console.error("Erreur lors de la sauvegarde des personnes:", error);
@@ -350,7 +347,7 @@ async function loadPeopleFromDB() {
     } catch (error) {
         console.error("Erreur lors du chargement des personnes:", error);
         showToast("Erreur lors du chargement des personnes.", "error");
-        people = []; // Réinitialiser pour éviter des bugs
+        people = [];
     }
 }
 
@@ -383,7 +380,7 @@ function renderPeopleList() {
 
         li.querySelector('.toggle-visibility-btn').addEventListener('click', async (e) => {
             togglePersonVisibility(person.id, e.currentTarget);
-            await savePeople(); // Sauvegarder après changement de visibilité
+            await savePeople();
         });
         li.querySelector('.edit-person-btn').addEventListener('click', () => showEditPersonModal(person.id));
         li.querySelector('.delete-person-btn').addEventListener('click', () => confirmDeletePerson(person.id));
@@ -446,7 +443,7 @@ async function addPerson() {
         isVisible: true
     };
     people.push(newPerson);
-    await savePeople(); // Sauvegarde dans IndexedDB
+    await savePeople();
     renderPeopleList();
     closeModal();
     showToast(`Personne "${name}" ajoutée !`, 'success');
@@ -491,7 +488,6 @@ async function editPerson(personId) {
         const oldName = person.name;
         person.name = newName;
 
-        // Mettre à jour les titres des événements existants si le nom de la personne change
         allCalendarEvents.forEach(event => {
             if (event.personId === person.id) {
                 const eventTypeDisplay = getEventTypeDisplayName(event.type);
@@ -499,8 +495,8 @@ async function editPerson(personId) {
             }
         });
 
-        await savePeople(); // Sauvegarde dans IndexedDB
-        await saveCalendarEvents(); // Sauvegarder les événements mis à jour
+        await savePeople();
+        await saveCalendarEvents();
         renderPeopleList();
         updateCalendarEventsDisplay();
         closeModal();
@@ -528,8 +524,8 @@ async function deletePerson(personId) {
     people = people.filter(p => p.id !== personId);
     if (people.length < initialPeopleCount) {
         allCalendarEvents = allCalendarEvents.filter(event => event.personId !== personId);
-        await savePeople(); // Sauvegarde dans IndexedDB
-        await saveCalendarEvents(); // Sauvegarde dans IndexedDB
+        await savePeople();
+        await saveCalendarEvents();
         renderPeopleList();
         updateCalendarEventsDisplay();
         closeModal();
@@ -544,7 +540,7 @@ async function saveCalendarEvents() {
     try {
         await clearStore(STORE_EVENTS);
         for (const event of allCalendarEvents) {
-            await putItem(STORE_EVENTS, event); // Utiliser putItem pour gérer l'ajout et la mise à jour
+            await putItem(STORE_EVENTS, event);
         }
     } catch (error) {
         console.error("Erreur lors de la sauvegarde des événements:", error);
@@ -646,9 +642,6 @@ function showAddPlanningEventModal(startStr = '', endStr = '') {
     const currentYear = dayjs().year();
     const endOfYear = dayjs().endOf('year').format('YYYY-MM-DD');
 
-    // MODIFIÉ : Assure que la date de fin est la même que la date de début par défaut
-    // FullCalendar `select` event gives endStr as the day AFTER the selected range,
-    // so if only one day is selected, endStr is day + 1. We need to display the selected end day.
     const defaultEndDate = endStr ? dayjs(endStr).subtract(1, 'day').format('YYYY-MM-DD') : startStr;
 
 
@@ -687,7 +680,6 @@ function handleEventTypeChange(selectedType) {
 
     if (selectedType === 'telework_recurrent') {
         recurrenceOptionsDiv.style.display = 'block';
-        // MODIFIÉ : Assure que la date de fin de récurrence est pré-remplie si vide
         if (recurrenceEndDateInput && !recurrenceEndDateInput.value) {
             recurrenceEndDateInput.value = dayjs().endOf('year').format('YYYY-MM-DD');
         }
@@ -702,7 +694,7 @@ async function addPlanningEvent() {
     const personId = document.getElementById('personSelect').value;
     const eventType = document.getElementById('eventTypeSelect').value;
     const startDate = document.getElementById('eventStartDate').value;
-    const endDate = document.getElementById('eventEndDate').value; // Récupère la valeur de la date de fin
+    const endDate = document.getElementById('eventEndDate').value;
 
     if (!personId || !eventType || !startDate) {
         showToast('Veuillez remplir tous les champs requis.', 'error');
@@ -718,8 +710,6 @@ async function addPlanningEvent() {
     const eventColor = EVENT_COLORS[eventType] || '#000000';
 
     const generateEvent = (start, end, recurrenceGroupId = null) => {
-        // La date de fin de FullCalendar est exclusive, donc on ajoute 1 jour
-        // Si endDate est vide, on utilise startDate comme date de fin
         const finalEnd = end ? dayjs(end).add(1, 'day').format('YYYY-MM-DD') : dayjs(start).add(1, 'day').format('YYYY-MM-DD');
         const eventTypeDisplay = getEventTypeDisplayName(eventType);
 
@@ -733,7 +723,7 @@ async function addPlanningEvent() {
             backgroundColor: eventColor,
             borderColor: eventColor,
             allDay: true,
-            recurrenceGroupId: recurrenceGroupId // Ajout du groupId pour les événements récurrents
+            recurrenceGroupId: recurrenceGroupId
         };
     };
 
@@ -741,16 +731,15 @@ async function addPlanningEvent() {
     if (eventType === 'telework_recurrent') {
         const recurrenceDays = Array.from(document.querySelectorAll('input[name="recurrenceDays"]:checked')).map(cb => parseInt(cb.value));
         const recurrenceEndDateInput = document.getElementById('recurrenceEndDate');
-        const recurrenceEndDate = recurrenceEndDateInput ? recurrenceEndDateInput.value : ''; // Assure que la valeur est récupérée
+        const recurrenceEndDate = recurrenceEndDateInput ? recurrenceEndDateInput.value : '';
 
-        // MODIFIÉ : Validation plus robuste de la date de fin de récurrence
         const endRecurrenceDayjs = dayjs(recurrenceEndDate);
         if (recurrenceDays.length === 0 || !recurrenceEndDate || !endRecurrenceDayjs.isValid()) {
             showToast('Pour le télétravail récurrent, veuillez sélectionner les jours et fournir une date de fin de récurrence valide.', 'error');
             return;
         }
 
-        const recurrenceGroupId = crypto.randomUUID(); // Générer un ID unique pour cette série
+        const recurrenceGroupId = crypto.randomUUID();
         let currentDay = dayjs(startDate);
         
         while (currentDay.isSameOrBefore(endRecurrenceDayjs, 'day')) {
@@ -766,7 +755,7 @@ async function addPlanningEvent() {
     for (const event of eventsToAdd) {
         allCalendarEvents.push(event);
     }
-    await saveCalendarEvents(); // Sauvegarde dans IndexedDB
+    await saveCalendarEvents();
     updateCalendarEventsDisplay();
     closeModal();
     showToast(`Événement(s) pour ${person.name} ajouté(s) !`, 'success');
@@ -790,7 +779,6 @@ function showEditPlanningEventModal(eventId) {
     const startDate = event.start ? dayjs(event.start).format('YYYY-MM-DD') : '';
     let endDate = '';
     if (event.end) {
-        // La date de fin de FullCalendar est exclusive, donc on soustrait 1 jour pour l'afficher correctement
         const endDayjs = dayjs(event.end);
         endDate = endDayjs.subtract(1, 'day').format('YYYY-MM-DD');
     }
@@ -840,7 +828,6 @@ async function editPlanningEvent(eventId) {
     const eventColor = EVENT_COLORS[eventType] || '#000000';
     const eventTypeDisplay = getEventTypeDisplayName(eventType);
 
-    // La date de fin de FullCalendar est exclusive, donc on ajoute 1 jour
     const finalEnd = endDate ? dayjs(endDate).add(1, 'day').format('YYYY-MM-DD') : dayjs(startDate).add(1, 'day').format('YYYY-MM-DD');
 
     const updatedEvent = {
@@ -856,7 +843,7 @@ async function editPlanningEvent(eventId) {
     };
 
     allCalendarEvents[eventIndex] = updatedEvent;
-    await saveCalendarEvents(); // Sauvegarde dans IndexedDB
+    await saveCalendarEvents();
     updateCalendarEventsDisplay();
     closeModal();
     showToast('Événement modifié avec succès !', 'success');
@@ -876,7 +863,7 @@ async function deleteEvent(eventId) {
     const initialEventCount = allCalendarEvents.length;
     allCalendarEvents = allCalendarEvents.filter(e => e.id !== eventId);
     if (allCalendarEvents.length < initialEventCount) {
-        await saveCalendarEvents(); // Sauvegarde dans IndexedDB
+        await saveCalendarEvents();
         updateCalendarEventsDisplay();
         closeModal();
         showToast('Événement supprimé !', 'success');
@@ -900,7 +887,7 @@ async function deleteRecurrenceSeries(recurrenceGroupId) {
     allCalendarEvents = allCalendarEvents.filter(e => e.recurrenceGroupId !== recurrenceGroupId);
     
     if (allCalendarEvents.length < initialEventCount) {
-        await saveCalendarEvents(); // Sauvegarde dans IndexedDB
+        await saveCalendarEvents();
         updateCalendarEventsDisplay();
         closeModal();
         showToast('Série d\'événements récurrents supprimée !', 'success');
@@ -974,7 +961,7 @@ async function importDataFromJson() {
             renderPeopleList();
             showToast('Personnes importées avec succès !', 'success');
         } else {
-            people = []; // Réinitialiser si pas de données
+            people = [];
         }
 
         if (parsedData.events && Array.isArray(parsedData.events)) {
@@ -996,7 +983,7 @@ async function importDataFromJson() {
             updateCalendarEventsDisplay();
             showToast('Événements importés avec succès !', 'success');
         } else {
-            allCalendarEvents = []; // Réinitialiser si pas de données
+            allCalendarEvents = [];
         }
         
         if (!parsedData.people && !parsedData.events) {
@@ -1056,12 +1043,10 @@ function showExportOptionsModal(exportType) {
         </div>
     `;
 
-    // MODIFIÉ : Utilisation des classes CSS pour les boutons Valider/Annuler
     const buttons = [];
     buttons.push({ text: 'Exporter', onclick: `prepareAndPerformExport("${exportType}")`, class: 'button-primary' });
     buttons.push({ text: 'Annuler', onclick: 'closeModal()', class: 'button-secondary' });
 
-    // La fonction showModal est maintenant utilisée avec le tableau de boutons stylisés
     showModal('Options d\'exportation', content, buttons); 
 }
 
@@ -1084,16 +1069,14 @@ async function prepareAndPerformExport(type) {
         return;
     }
 
-    closeModal(); // Fermer la modale d'options
+    closeModal();
 
-    // Sauvegarde l'état actuel du calendrier
     const originalEventsOption = calendar.getOption('events');
     const originalView = calendar.view.type;
     const originalDate = calendar.getDate();
 
     let filteredExportEvents = allCalendarEvents.filter(event => {
         const isPersonSelected = selectedPersonIds.includes(event.personId);
-        // Filtrage plus précis pour les types d'événements
         let isEventTypeSelected = false;
         if (selectedEventType === 'all') {
             isEventTypeSelected = true;
@@ -1107,13 +1090,12 @@ async function prepareAndPerformExport(type) {
 
     if (filteredExportEvents.length === 0) {
         showToast("Aucun événement correspondant aux critères de sélection pour l'exportation.", "info");
-        calendar.setOption('events', originalEventsOption); // Restaurer immédiatement
+        calendar.setOption('events', originalEventsOption);
         calendar.changeView(originalView);
         calendar.gotoDate(originalDate);
         return;
     }
 
-    // Appliquer les événements filtrés au calendrier temporairement
     calendar.setOption('events', filteredExportEvents);
     
     try {
@@ -1126,7 +1108,6 @@ async function prepareAndPerformExport(type) {
         console.error(`Erreur lors de l'exportation ${type}:`, error);
         showToast(`Erreur lors de l'exportation ${type}.`, 'error');
     } finally {
-        // Toujours restaurer l'état original du calendrier
         calendar.setOption('events', originalEventsOption);
         calendar.changeView(originalView);
         calendar.gotoDate(originalDate);
@@ -1155,34 +1136,32 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate) {
         let currentMonth = dayjs(originalDate).startOf('month');
         let currentPage = 1;
 
-        const numberOfMonthsToExport = 2; // Exportation pour le mois actuel et le suivant
+        const numberOfMonthsToExport = 2;
 
         for (let i = 0; i < numberOfMonthsToExport; i++) {
             if (currentPage > 1) {
                 pdf.addPage();
             }
             calendar.gotoDate(currentMonth.toDate());
-            await new Promise(resolve => setTimeout(resolve, 100)); // Laisser le temps au calendrier de se rendre
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             const canvas = await html2canvas(calendarEl, {
-                scale: 2, // Augmente la résolution
+                scale: 2,
                 useCORS: true,
                 logging: false,
-                backgroundColor: null // Important pour les thèmes clairs/sombres (transparent si null)
+                backgroundColor: null
             });
 
             const imgData = canvas.toDataURL('image/png');
             const imgWidthPx = canvas.width;
             const imgHeightPx = canvas.height;
 
-            // Convertir les pixels en millimètres (1 inch = 25.4 mm, 96 dpi par défaut pour html2canvas)
             const imgWidthMm = imgWidthPx * 25.4 / 96;
             const imgHeightMm = imgHeightPx * 25.4 / 96;
 
             let finalWidthMm, finalHeightMm;
             const aspectRatio = imgWidthMm / imgHeightMm;
 
-            // Redimensionner si l'image est plus grande que la page PDF
             if (imgWidthMm > availableWidth || imgHeightMm > availableHeight) {
                 if (aspectRatio > availableWidth / availableHeight) {
                     finalWidthMm = availableWidth;
@@ -1196,7 +1175,6 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate) {
                 finalHeightMm = imgHeightMm;
             }
 
-            // Centrer l'image sur la page
             const x = (pdfPageWidthMm - finalWidthMm) / 2;
             const y = (pdfPageHeightMm - finalHeightMm) / 2;
 
@@ -1211,7 +1189,7 @@ async function exportPlanningToPdfMultiMonth(originalView, originalDate) {
 
     } catch (error) {
         console.error('Erreur lors de l\'exportation PDF multi-mois :', error);
-        throw error; // Propagate error for finally block in prepareAndPerformExport
+        throw error;
     }
 }
 
@@ -1227,17 +1205,17 @@ async function exportPlanningToPngMultiMonth(originalView, originalDate, include
         calendar.changeView('dayGridMonth');
 
         let currentMonth = dayjs(originalDate).startOf('month');
-        const numberOfMonthsToExport = 2; // Exportation pour le mois actuel et le suivant
+        const numberOfMonthsToExport = 2;
 
         for (let i = 0; i < numberOfMonthsToExport; i++) {
             calendar.gotoDate(currentMonth.toDate());
-            await new Promise(resolve => setTimeout(resolve, 100)); // Laisser le temps au calendrier de se rendre
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             const canvas = await html2canvas(calendarEl, {
-                scale: 2, // Augmente la résolution
+                scale: 2,
                 useCORS: true,
                 logging: false,
-                backgroundColor: includeWhiteBackground ? '#FFFFFF' : null // MODIFIÉ : Fond blanc ou transparent
+                backgroundColor: includeWhiteBackground ? '#FFFFFF' : null
             });
 
             const imgUrl = canvas.toDataURL('image/png');
@@ -1255,10 +1233,174 @@ async function exportPlanningToPngMultiMonth(originalView, originalDate, include
 
     } catch (error) {
         console.error('Erreur lors de l\'exportation PNG multi-mois :', error);
-        throw error; // Propagate error for finally block in prepareAndPerformExport
+        throw error;
     }
 }
 
+// --- Nouvelles fonctions pour les statistiques (v20.19) ---
 function showStatsModal() {
-    showToast("Fonctionnalité de statistiques à venir !", "info");
+    const currentYear = dayjs().year();
+    const defaultStartDate = dayjs().startOf('year').format('YYYY-MM-DD');
+    const defaultEndDate = dayjs().endOf('year').format('YYYY-MM-DD');
+
+    const content = `
+        <p>Calcule les statistiques des permanences, télétravail et congés pour les personnes.</p>
+        ${createDatePicker('statsStartDate', 'Date de début', defaultStartDate, true)}
+        ${createDatePicker('statsEndDate', 'Date de fin', defaultEndDate, true)}
+        <div class="form-group button-group">
+            <button class="button-primary" onclick="generateAndDisplayStats()">Générer les statistiques</button>
+        </div>
+        <div id="statsResults" class="stats-table-container">
+            </div>
+    `;
+
+    // Pas de boutons dans le footer de la modale principale pour laisser place aux boutons internes
+    showModal('Statistiques du Planning', content, []);
+    
+    // Générer les stats automatiquement à l'ouverture avec la période par défaut
+    setTimeout(() => generateAndDisplayStats(), 100);
+}
+
+function generateAndDisplayStats() {
+    const startDateStr = document.getElementById('statsStartDate').value;
+    const endDateStr = document.getElementById('statsEndDate').value;
+
+    const startDate = dayjs(startDateStr);
+    const endDate = dayjs(endDateStr);
+
+    if (!startDate.isValid() || !endDate.isValid() || startDate.isAfter(endDate)) {
+        showToast("Veuillez sélectionner une période de dates valide.", "error");
+        return;
+    }
+
+    const stats = {};
+    people.forEach(person => {
+        stats[person.id] = {
+            name: person.name,
+            permanenceDays: 0,
+            teleworkDays: 0,
+            leaveDays: 0,
+            totalEventDays: 0
+        };
+    });
+
+    allCalendarEvents.forEach(event => {
+        const eventStartDate = dayjs(event.start);
+        // FullCalendar end date is exclusive, subtract 1 day for inclusive comparison
+        const eventEndDate = dayjs(event.end).subtract(1, 'day');
+
+        // Check if event overlaps with the selected stats period
+        if (eventStartDate.isBefore(endDate.add(1, 'day'), 'day') && eventEndDate.isAfter(startDate.subtract(1, 'day'), 'day')) {
+            const overlapStart = dayjs.max(eventStartDate, startDate);
+            const overlapEnd = dayjs.min(eventEndDate, endDate);
+
+            let currentDay = overlapStart;
+            while (currentDay.isSameOrBefore(overlapEnd, 'day')) {
+                const personStat = stats[event.personId];
+                if (personStat) {
+                    switch (event.type) {
+                        case 'permanence':
+                            personStat.permanenceDays++;
+                            break;
+                        case 'telework_punctual':
+                        case 'telework_recurrent':
+                            personStat.teleworkDays++;
+                            break;
+                        case 'leave':
+                            personStat.leaveDays++;
+                            break;
+                    }
+                    personStat.totalEventDays++;
+                }
+                currentDay = currentDay.add(1, 'day');
+            }
+        }
+    });
+
+    displayStatsTable(stats);
+}
+
+function displayStatsTable(stats) {
+    const statsResultsDiv = document.getElementById('statsResults');
+    if (!statsResultsDiv) return;
+
+    let tableHtml = `
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Personne</th>
+                    <th>Permanences</th>
+                    <th>Télétravail</th>
+                    <th>Congés</th>
+                    <th>Total Événements</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    let hasData = false;
+    for (const personId in stats) {
+        if (stats.hasOwnProperty(personId)) {
+            const stat = stats[personId];
+            if (stat.totalEventDays > 0 || stat.permanenceDays > 0 || stat.teleworkDays > 0 || stat.leaveDays > 0) {
+                hasData = true;
+                tableHtml += `
+                    <tr>
+                        <td>${stat.name}</td>
+                        <td>${stat.permanenceDays}</td>
+                        <td>${stat.teleworkDays}</td>
+                        <td>${stat.leaveDays}</td>
+                        <td>${stat.totalEventDays}</td>
+                    </tr>
+                `;
+            }
+        }
+    }
+
+    if (!hasData) {
+        statsResultsDiv.innerHTML = '<p class="info-message">Aucune donnée pour la période sélectionnée.</p>';
+        return;
+    }
+
+    tableHtml += `
+            </tbody>
+        </table>
+        <div class="form-group button-group mt-3">
+            <button class="button-secondary" onclick="exportStatsAsCsv()">Exporter en CSV</button>
+        </div>
+    `;
+    statsResultsDiv.innerHTML = tableHtml;
+}
+
+function exportStatsAsCsv() {
+    const statsResultsDiv = document.getElementById('statsResults');
+    const table = statsResultsDiv ? statsResultsDiv.querySelector('table') : null;
+
+    if (!table) {
+        showToast("Aucune statistique à exporter.", "info");
+        return;
+    }
+
+    let csv = [];
+    // Headers
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText);
+    csv.push(headers.join(';')); // Use semicolon for CSV (common in France)
+
+    // Rows
+    table.querySelectorAll('tbody tr').forEach(row => {
+        const rowData = Array.from(row.querySelectorAll('td')).map(td => td.innerText);
+        csv.push(rowData.join(';'));
+    });
+
+    const csvString = csv.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `electri-cal_stats_${dayjs().format('YYYY-MM-DD_HHmmss')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Statistiques exportées en CSV !', 'success');
 }
