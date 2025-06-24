@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.50"; // INCEMENTATION : Correction blocage PDF, nommage PDF, position toast
+const APP_VERSION = "v20.51"; // INCEMENTATION : Correction blocage PDF, nommage PDF, position toast, outil vérif librairies
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -19,9 +19,18 @@ const EVENT_COLORS = {
     'leave': '#808080' // Gris
 };
 
+// Versions attendues des librairies (pour l'outil de vérification)
+const EXPECTED_LIB_VERSIONS = {
+    'FullCalendar': '6.1.11', // Version actuelle au 24 juin 2025
+    'Day.js': '1.11.11', // Version actuelle au 24 juin 2025
+    'jsPDF': '2.8.0' // Version actuelle au 24 juin 2025 (ou celle testée et stable)
+    // Note: Les plugins Day.js n'ont généralement pas de versions indépendantes faciles à vérifier.
+};
+
+
 // --- IndexedDB Configuration ---
 const DB_NAME = 'ElectriCalDB';
-const DB_VERSION = 2; // INCEMENTATION : Nouvelle version pour ajouter le STORE_PDF_GENERATION
+const DB_VERSION = 2; // Version 2 pour inclure STORE_PDF_GENERATION et s'assurer de la compatibilité
 const STORE_PEOPLE = 'people';
 const STORE_EVENTS = 'events';
 const STORE_PDF_GENERATION = 'pdfData'; // Nouveau store pour les données PDF temporaires
@@ -143,9 +152,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         themeToggleButton.addEventListener('click', toggleTheme);
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
-            themeToggleButton.textContent = 'Thème Clair';
+            themeToggleButton.innerHTML = '<i class="fas fa-sun"></i> Thème Clair';
         } else {
-            themeToggleButton.textContent = 'Thème Sombre';
+            themeToggleButton.innerHTML = '<i class="fas fa-moon"></i> Thème Sombre';
         }
     }
 
@@ -160,7 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', () => showExportOptionsModal('pdf'));
 
     const exportPngBtn = document.getElementById('exportPngBtn');
-    if (exportPngBtn) exportPngBtn.addEventListener('click', () => showToast("Fonctionnalité à venir.", "info"));
+    if (exportPngBtn) exportPngBtn.addEventListener('click', () => showToast("Fonctionnalité d'export PNG à venir.", "info"));
 
     const exportJsonBtn = document.getElementById('exportJsonBtn');
     if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportDataToJson);
@@ -170,6 +179,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const showStatsBtn = document.getElementById('showStatsBtn');
     if (showStatsBtn) showStatsBtn.addEventListener('click', showStatsModal);
+
+    // Bouton pour la vérification des librairies
+    const checkLibsBtn = document.getElementById('checkLibsBtn');
+    if (checkLibsBtn) checkLibsBtn.addEventListener('click', checkLibraryVersions);
 });
 
 // Fonctions utilitaires pour le thème
@@ -178,15 +191,15 @@ function toggleTheme() {
     const themeToggleButton = document.getElementById('themeToggleButton');
     if (document.body.classList.contains('dark-mode')) {
         localStorage.setItem('theme', 'dark');
-        if (themeToggleButton) themeToggleButton.textContent = 'Thème Clair';
+        if (themeToggleButton) themeToggleButton.innerHTML = '<i class="fas fa-sun"></i> Thème Clair';
     } else {
         localStorage.setItem('theme', 'light');
-        if (themeToggleButton) themeToggleButton.textContent = 'Thème Sombre';
+        if (themeToggleButton) themeToggleButton.innerHTML = '<i class="fas fa-moon"></i> Thème Sombre';
     }
 }
 
 // Gestion des Toasts (notifications)
-let currentToast = null; // Pour gérer un seul toast à la fois
+let currentToast = null; // Pour gérer un seul toast "long" (isLoading = true)
 
 function showToast(message, type = 'info', duration = 3000, isLoading = false) {
     const toastsContainer = document.getElementById('toastsContainer');
@@ -197,12 +210,18 @@ function showToast(message, type = 'info', duration = 3000, isLoading = false) {
         document.body.appendChild(newContainer);
     }
 
-    // Supprime le toast précédent s'il existe
-    if (currentToast) {
-        currentToast.remove();
-        clearTimeout(currentToast.timer);
+    // Si c'est un toast de chargement, on gère son unicité
+    if (isLoading) {
+        if (currentToast) {
+            clearTimeout(currentToast.timer); // Annule la suppression automatique du précédent
+            currentToast.remove(); // Supprime l'ancien toast de chargement
+        }
+    } else {
+        // Pour les toasts non-loading, on ne supprime pas forcément l'ancien, ils peuvent s'empiler
+        // Sauf si on décide d'avoir un seul toast à la fois pour tout type
+        // Ici, je garde l'empilement pour les toasts "normaux"
     }
-
+    
     const toast = document.createElement('div');
     toast.classList.add('toast', type);
     toast.innerHTML = `
@@ -211,17 +230,21 @@ function showToast(message, type = 'info', duration = 3000, isLoading = false) {
     `;
 
     // Ajoute la classe 'show' pour déclencher l'animation d'apparition
-    document.getElementById('toastsContainer').appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 10); // Petit délai pour que la transition s'applique
+    toastsContainer.appendChild(toast);
+    // Force le reflow pour que la transition se déclenche
+    void toast.offsetWidth;
+    toast.classList.add('show'); 
 
-    currentToast = toast;
+    if (isLoading) {
+        currentToast = toast; // Garde une référence au toast de chargement
+    }
 
-    if (duration !== 0) { // Si duration est 0, le toast reste indéfiniment
-        currentToast.timer = setTimeout(() => {
+    if (duration !== 0) { // Si duration est 0, le toast reste indéfiniment (utile pour loading)
+        toast.timer = setTimeout(() => {
             toast.classList.add('fade-out');
             toast.addEventListener('transitionend', () => {
                 toast.remove();
-                if (currentToast === toast) { // Évite de supprimer un nouveau toast
+                if (currentToast === toast) { // Si c'était le toast de chargement, le réinitialiser
                     currentToast = null;
                 }
             }, { once: true }); // Supprime l'écouteur après une fois
@@ -248,8 +271,17 @@ function showModal(title, contentHtml, buttons = []) {
         modal = document.createElement('div');
         modal.id = 'dynamicModal';
         modal.classList.add('modal');
-        document.getElementById('modalsContainer').appendChild(modal);
+        // S'assurer que le conteneur des modales existe (à ajouter dans l'HTML si ce n'est pas le cas)
+        let modalsContainer = document.getElementById('modalsContainer');
+        if (!modalsContainer) {
+            modalsContainer = document.createElement('div');
+            modalsContainer.id = 'modalsContainer';
+            document.body.appendChild(modalsContainer);
+        }
+        modalsContainer.appendChild(modal);
     }
+    
+    // Supprimer l'ancien écouteur pour éviter les doublons
     const oldCloseButton = modal.querySelector('.close-button');
     if (oldCloseButton) {
         oldCloseButton.removeEventListener('click', closeModal);
@@ -270,7 +302,9 @@ function showModal(title, contentHtml, buttons = []) {
         </div>
     `;
     modal.style.display = 'flex';
-    setTimeout(() => modal.classList.add('show'), 10);
+    // Force le reflow pour que la transition se déclenche
+    void modal.offsetWidth;
+    modal.classList.add('show');
     document.body.style.overflow = 'hidden'; // Empêche le défilement du body
 
     modal.querySelector('.close-button').addEventListener('click', closeModal);
@@ -287,11 +321,13 @@ function closeModal() {
     if (modal) {
         modal.classList.remove('show');
         modal.addEventListener('transitionend', () => {
-            modal.style.display = 'none';
-            modal.innerHTML = '';
+            if (!modal.classList.contains('show')) { // S'assurer que la transition est bien la fermeture
+                modal.style.display = 'none';
+                modal.innerHTML = ''; // Nettoyer le contenu
+            }
         }, { once: true });
     }
-    document.body.style.overflow = '';
+    document.body.style.overflow = ''; // Rétablit le défilement du body
 }
 
 function createAndShowModal(title, content, primaryButtonText, primaryButtonAction, cancelButtonText = 'Annuler', cancelButtonAction = 'closeModal()') {
@@ -762,7 +798,8 @@ async function addPlanningEvent() {
     const eventColor = EVENT_COLORS[eventType] || '#000000';
 
     const generateEvent = (start, end, recurrenceGroupId = null) => {
-        const finalEnd = end ? dayjs(end).add(1, 'day').format('YYYY-MM-DD') : dayjs(start).add(1, 'day').format('YYYY-MM-DD');
+        // FullCalendar end is exclusive, so add 1 day to make it inclusive for single day events
+        const finalEnd = end && dayjs(end).isValid() && dayjs(end).isSameOrAfter(dayjs(start)) ? dayjs(end).add(1, 'day').format('YYYY-MM-DD') : dayjs(start).add(1, 'day').format('YYYY-MM-DD');
         const eventTypeDisplay = getEventTypeDisplayName(eventType);
 
         return {
@@ -795,6 +832,7 @@ async function addPlanningEvent() {
         let currentDay = dayjs(startDate);
         
         while (currentDay.isSameOrBefore(endRecurrenceDayjs, 'day')) {
+            // day() returns 0 for Sunday, 1 for Monday...
             if (recurrenceDays.includes(currentDay.day())) {
                 eventsToAdd.push(generateEvent(currentDay.format('YYYY-MM-DD'), currentDay.format('YYYY-MM-DD'), recurrenceGroupId));
             }
@@ -831,9 +869,13 @@ function showEditPlanningEventModal(eventId) {
 
     const startDate = event.start ? dayjs(event.start).format('YYYY-MM-DD') : '';
     let endDate = '';
-    if (event.end) {
-        const endDayjs = dayjs(event.end);
-        endDate = endDayjs.subtract(1, 'day').format('YYYY-MM-DD');
+    // FullCalendar end date is exclusive, so subtract 1 day for display
+    if (event.end && dayjs(event.end).isValid()) {
+        const endDayjs = dayjs(event.end).subtract(1, 'day');
+        // Only set if it's a multi-day event or if start and end are different after subtracting
+        if (endDayjs.isSameOrAfter(dayjs(event.start))) {
+            endDate = endDayjs.format('YYYY-MM-DD');
+        }
     }
 
     let deleteButtonsHtml = `<button class="button-danger" onclick="confirmDeleteEvent('${event.id}')">Supprimer cet événement</button>`;
@@ -881,7 +923,8 @@ async function editPlanningEvent(eventId) {
     const eventColor = EVENT_COLORS[eventType] || '#000000';
     const eventTypeDisplay = getEventTypeDisplayName(eventType);
 
-    const finalEnd = endDate ? dayjs(endDate).add(1, 'day').format('YYYY-MM-DD') : dayjs(startDate).add(1, 'day').format('YYYY-MM-DD');
+    // FullCalendar end is exclusive, so add 1 day to make it inclusive for single day events
+    const finalEnd = endDate && dayjs(endDate).isValid() && dayjs(endDate).isSameOrAfter(dayjs(startDate)) ? dayjs(endDate).add(1, 'day').format('YYYY-MM-DD') : dayjs(startDate).add(1, 'day').format('YYYY-MM-DD');
 
     const updatedEvent = {
         ...allCalendarEvents[eventIndex],
@@ -979,8 +1022,8 @@ async function exportDataToJson() {
 
 function showImportModal() {
     const content = `
-        ${createTextArea('importJsonData', 'Collez vos données JSON ici', '', 'Collez le contenu de votre fichier JSON ici...', 10)}
-        <p>Attention: L'importation écrasera les données existantes.</p>
+        <p>Collez ici le contenu JSON exporté précédemment. Cela écrasera toutes les personnes et tous les événements existants.</p>
+        ${createTextArea('importJsonData', 'Données JSON', '', 'Collez le contenu de votre fichier JSON ici...', 10)}
     `;
     createAndShowModal(
         'Importer des données JSON',
@@ -1049,7 +1092,7 @@ async function importDataFromJson() {
     }
 }
 
-// MODIFIÉ : Fonction pour afficher la modale des options d'export (spécifique au nouveau PDF)
+// Fonction pour afficher la modale des options d'export PDF
 function showExportOptionsModal(exportType) {
     if (people.length === 0) {
         showToast("Veuillez ajouter au moins une personne d'abord.", "error");
@@ -1066,21 +1109,19 @@ function showExportOptionsModal(exportType) {
 
 
     const content = `
-        <p>Génère un PDF listant les permanences par semaine sous forme de tableau (du Lundi au Vendredi).</p>
+        <p>Génère un PDF listant les permanences par semaine sous forme de tableau (du Lundi au Dimanche).</p>
         ${createDatePicker('pdfExportStartDate', 'Date de début de la période', defaultStartDate, true)}
         ${createDatePicker('pdfExportEndDate', 'Date de fin de la période', defaultEndDate, true)}
     `;
 
     const buttons = [];
-    // Le bouton appelle maintenant la nouvelle fonction qui prépare les données avant de générer le PDF
     buttons.push({ text: 'Générer le PDF', onclick: `preparePdfDataAndGeneratePdf()`, class: 'button-primary' });
     buttons.push({ text: 'Annuler', onclick: 'closeModal()', class: 'button-secondary' });
 
     showModal('Exporter le planning des permanences (PDF)', content, buttons); 
 }
 
-// MODIFIÉ : Prépare les données pour le PDF dans IndexedDB avant de générer le PDF
-// Inclut maintenant tous les jours de la semaine
+// Prépare les données pour le PDF dans IndexedDB avant de générer le PDF
 async function preparePdfDataAndGeneratePdf() {
     closeModal(); // Ferme la modale
 
@@ -1102,21 +1143,21 @@ async function preparePdfDataAndGeneratePdf() {
 
         // Agrégation des données par jour (incluant tous les jours de la semaine)
         const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: new Set(), permanence_backup: new Set() } }
-        let tempDate = dayjs(startDate).startOf('week');
-        if (tempDate.day() === 0) { // Si le début de semaine est Dimanche (0), on avance au Lundi (1)
-            tempDate = tempDate.add(1, 'day');
-        } else if (tempDate.day() !== 1) { // Si ce n'est ni Dimanche ni Lundi, on va au Lundi précédent
-            tempDate = tempDate.day(1);
+        
+        // Déterminer la première date à traiter (Lundi de la semaine de startDate)
+        let currentCollectionDate = dayjs(startDate).startOf('week');
+        if (currentCollectionDate.day() === 0) { // Si le début de semaine est Dimanche (0), on va au lundi suivant
+            currentCollectionDate = currentCollectionDate.add(1, 'day');
         }
 
-        const endOfPeriodForCollecting = dayjs(endDate).endOf('week');
+        // Déterminer la dernière date à traiter (Dimanche de la semaine de endDate)
+        const endCollectionDate = dayjs(endDate).endOf('week');
 
-        while (tempDate.isSameOrBefore(endOfPeriodForCollecting, 'day')) {
-            // S'assurer que tous les jours sont initialisés, même ceux hors de la période d'export,
+        while (currentCollectionDate.isSameOrBefore(endCollectionDate, 'day')) {
+            // Initialiser tous les jours de la période de collecte, même ceux sans événement
             // pour garantir une structure de tableau complète semaine par semaine.
-            // On filtrera ensuite pour les données pertinentes.
-            dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), permanence_backup: new Set() };
-            tempDate = tempDate.add(1, 'day');
+            dailyPermanences[currentCollectionDate.format('YYYY-MM-DD')] = { permanence: new Set(), permanence_backup: new Set() };
+            currentCollectionDate = currentCollectionDate.add(1, 'day');
         }
 
         allCalendarEvents.forEach(event => {
@@ -1131,17 +1172,15 @@ async function preparePdfDataAndGeneratePdf() {
             // FullCalendar end date is exclusive, subtract 1 day for inclusive comparison
             const eventEndDate = dayjs(event.end).subtract(1, 'day'); 
 
-            // Correction: Inclure uniquement les jours qui sont dans la fourchette [startDate, endDate]
             let currentEventDay = eventStartDate;
             while (currentEventDay.isSameOrBefore(eventEndDate, 'day')) {
-                if (currentEventDay.isBetween(startDate, endDate, 'day', '[]')) {
-                    const dateKey = currentEventDay.format('YYYY-MM-DD');
-                    if (dailyPermanences[dateKey]) { // S'assurer que le jour est dans la période d'export collectée
-                        if (event.type === 'permanence') {
-                            dailyPermanences[dateKey].permanence.add(person.name);
-                        } else if (event.type === 'permanence_backup') {
-                            dailyPermanences[dateKey].permanence_backup.add(person.name);
-                        }
+                const dateKey = currentEventDay.format('YYYY-MM-DD');
+                // Seulement si le jour est dans la période *collectée* (pas uniquement la période d'export)
+                if (dailyPermanences[dateKey]) { 
+                    if (event.type === 'permanence') {
+                        dailyPermanences[dateKey].permanence.add(person.name);
+                    } else if (event.type === 'permanence_backup') {
+                        dailyPermanences[dateKey].permanence_backup.add(person.name);
                     }
                 }
                 currentEventDay = currentEventDay.add(1, 'day');
@@ -1154,7 +1193,6 @@ async function preparePdfDataAndGeneratePdf() {
             const dayData = dailyPermanences[dateKey];
             const dayjsObj = dayjs(dateKey);
             
-            // Forcer la locale française pour le formatage du nom du jour
             const formattedDayOfWeek = dayjsObj.locale('fr').format('ddd DD/MM'); // Ex: "Lun 24/06"
             const isWeekend = (dayjsObj.day() === 0 || dayjsObj.day() === 6); // Dimanche=0, Samedi=6
 
@@ -1167,7 +1205,6 @@ async function preparePdfDataAndGeneratePdf() {
             });
         }
         
-        // Une fois les données préparées, générer le PDF
         await generatePermanencePdfTable(startDate, endDate);
 
     } catch (error) {
@@ -1178,10 +1215,9 @@ async function preparePdfDataAndGeneratePdf() {
     }
 }
 
-// MODIFIÉ : Fonction pour générer le PDF du planning des permanences en tableau
-// Elle lit maintenant les données pré-formatées de IndexedDB et gère tous les jours
+// Fonction pour générer le PDF du planning des permanences en tableau
 async function generatePermanencePdfTable(startDate, endDate) {
-    if (typeof jspdf === 'undefined') {
+    if (typeof jspdf === 'undefined' || typeof jspdf.jsPDF === 'undefined') {
         showToast("La bibliothèque jsPDF n'est pas chargée. L'export PDF est impossible.", "error", 5000);
         console.error("jsPDF is not loaded. Make sure the script is included.");
         return;
@@ -1193,15 +1229,14 @@ async function generatePermanencePdfTable(startDate, endDate) {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     
-    // NOUVEAU : 7 colonnes pour tous les jours de la semaine (Samedi et Dimanche inclus)
-    const numberOfColumns = 7; 
+    const numberOfColumns = 7; // Lundi à Dimanche
     const colWidth = (pageWidth - 2 * margin) / numberOfColumns; 
     
     const lineHeight = 7; // mm par ligne de texte (dates, permanences, backups)
     const weekBlockHeight = 3 * lineHeight; // 3 lignes par semaine (Date, Perm, Backup)
     const weekSpacing = 5; // mm d'espace entre les blocs de semaines
-    const headerHeight = 15; // Hauteur de l'en-tête (titre)
-    const footerHeight = 10; // Espace pour la pagination et le timestamp
+    const headerTitleHeight = 15; // Hauteur pour le titre de la page
+    const footerTextHeight = 10; // Espace pour la pagination et le timestamp
 
     // Couleurs spécifiques pour le PDF
     const PDF_HEADER_BG_COLOR = '#F0F0F0'; // Gris clair
@@ -1209,79 +1244,74 @@ async function generatePermanencePdfTable(startDate, endDate) {
     const PDF_PERMANENCE_TEXT_COLOR = EVENT_COLORS.permanence;
     const PDF_BACKUP_TEXT_COLOR = EVENT_COLORS.permanence_backup;
     const PDF_DEFAULT_TEXT_COLOR = '#333333';
-    const PDF_WEEKEND_TEXT_COLOR = '#888888'; // Texte gris pour le week-end
+    const PDF_WEEKEND_TEXT_COLOR = '#808080'; // Texte gris plus clair pour le week-end
 
-    // MODIFIÉ : Fonction pour ajouter le titre de la page et les footers
+    // Fonction pour ajouter le titre de la page et les footers
+    // `totalPages` est passé pour le calcul final de la pagination
     const addPageLayout = (docInstance, currentPageNum, totalPages) => {
+        // En-tête
         docInstance.setFontSize(14);
         docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
         docInstance.text(`Planning des Permanences : ${startDate.format('DD/MM/YYYY')} - ${endDate.format('DD/MM/YYYY')}`, pageWidth / 2, margin + 5, { align: 'center' });
         
+        // Footer
         docInstance.setFontSize(8);
         docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
-        const generatedTime = dayjs().format('DD/MM/YYYY HH:mm');
-        docInstance.text(`Généré le: ${generatedTime}`, margin, pageHeight - margin + 3, { align: 'left' });
+        const generatedTime = dayjs().format('DD/MM/YYYY HH:mm:ss');
+        docInstance.text(`Généré le: ${generatedTime} par ${APP_NAME} ${APP_VERSION}`, margin, pageHeight - margin + 3, { align: 'left' });
         docInstance.text(`Page ${currentPageNum}/${totalPages}`, pageWidth - margin, pageHeight - margin + 3, { align: 'right' });
         
-        return margin + headerHeight; // Retourne la position Y après l'en-tête
+        return margin + headerTitleHeight; // Retourne la position Y après l'en-tête
     };
 
-    // Lire les données pré-formatées depuis IndexedDB
     const pdfData = await getAllItems(STORE_PDF_GENERATION);
 
     // Groupement des données par semaine (7 jours par semaine)
     const weeksData = [];
     
-    let loopStartDate = dayjs(startDate).startOf('week'); 
-    if (loopStartDate.day() === 0) { // Si le début de semaine est Dimanche (0), on avance au Lundi (1)
-        loopStartDate = loopStartDate.add(1, 'day');
-    } else if (loopStartDate.day() !== 1) { // Si ce n'est ni Dimanche ni Lundi, on va au Lundi précédent
-        loopStartDate = loopStartDate.day(1);
+    // Pour s'assurer que chaque semaine commence par un Lundi
+    let currentWeekStart = dayjs(startDate).startOf('week'); 
+    if (currentWeekStart.day() === 0) { // Si le début de semaine est Dimanche (0), on avance au Lundi
+        currentWeekStart = currentWeekStart.add(1, 'day');
     }
     
-    let currentWeekIter = loopStartDate;
+    // S'assurer de capturer toutes les semaines complètes qui chevauchent la période d'export
+    const endOfPeriodForWeeks = dayjs(endDate).endOf('week');
 
-    while (currentWeekIter.isSameOrBefore(endDate.endOf('week'), 'day')) { // Assure d'inclure la semaine de endDate
+    while (currentWeekStart.isSameOrBefore(endOfPeriodForWeeks, 'day')) {
         const week = [];
-        for (let i = 0; i < 7; i++) { // Pour chaque jour de la semaine (0 = dimanche, 6 = samedi)
-            const currentDay = currentWeekIter.add(i, 'day');
+        for (let i = 0; i < 7; i++) { // Pour chaque jour de la semaine (Lundi=1 à Dimanche=0)
+            const currentDay = currentWeekStart.add(i, 'day');
             const dateKey = currentDay.format('YYYY-MM-DD');
             
             let dayPdfData = {
                 date: dateKey,
-                dayOfWeekFr: currentDay.locale('fr').format('ddd DD/MM'), // Forcer la locale française
+                dayOfWeekFr: currentDay.locale('fr').format('ddd DD/MM'),
                 permanenceNames: '',
                 backupNames: '',
-                isWeekend: (currentDay.day() === 0 || currentDay.day() === 6) // Dimanche=0, Samedi=6
+                isWeekend: (currentDay.day() === 0 || currentDay.day() === 6)
             };
 
-            // Chercher les données pré-préparées pour ce jour
             const foundData = pdfData.find(d => d.date === dateKey);
 
             if (foundData) {
                 dayPdfData.permanenceNames = foundData.permanenceNames;
                 dayPdfData.backupNames = foundData.backupNames;
-                dayPdfData.isWeekend = foundData.isWeekend; // Utiliser le flag de la DB
             }
             
             week.push(dayPdfData);
         }
         weeksData.push(week);
-        currentWeekIter = currentWeekIter.add(1, 'day'); // Passer au jour suivant pour la prochaine itération de semaine
-        if (currentWeekIter.day() === 0) { // Si on est dimanche, passer au lundi suivant
-            currentWeekIter = currentWeekIter.add(1, 'day');
-        } else if (currentWeekIter.day() !== 1) { // Si on n'est ni dimanche ni lundi, aller au lundi de la semaine suivante
-             currentWeekIter = currentWeekIter.day(1).add(7, 'day');
-        }
+        currentWeekStart = currentWeekStart.add(7, 'day'); // Passer au Lundi de la semaine suivante
     }
     
-    // Filtrer les semaines qui ne contiennent aucune donnée pertinente pour la période d'export.
-    // Une semaine est pertinente si au moins un de ses jours est inclus dans la période [startDate, endDate]
+    // Filtrer les semaines qui ne contiennent aucune donnée pertinente pour la période d'export,
+    // ou qui sont entièrement en dehors de la plage d'export choisie.
     const relevantWeeksData = weeksData.filter(week => {
         return week.some(dayData => {
             const dayDate = dayjs(dayData.date);
-            // Vérifier si le jour est inclus dans la période d'export [startDate, endDate]
-            return dayDate.isBetween(startDate, endDate, 'day', '[]');
+            // Le jour doit être à l'intérieur de la période d'export [startDate, endDate]
+            return dayDate.isSameOrAfter(startDate, 'day') && dayDate.isSameOrBefore(endDate, 'day');
         });
     });
 
@@ -1291,30 +1321,32 @@ async function generatePermanencePdfTable(startDate, endDate) {
     }
 
     // Calcul du nombre total de pages
-    let totalPages = 1;
-    let tempY = addPageLayout(doc, 1, 0); // Appel initial pour obtenir le Y de départ
+    let totalPages = 0;
+    let simulatedY = margin + headerTitleHeight; // Position Y de départ simulée
     for (const week of relevantWeeksData) {
-        // Simuler le rendu pour calculer la hauteur
-        if (tempY + weekBlockHeight + weekSpacing > pageHeight - margin - footerHeight) {
+        // Vérifier si cette semaine tiendra sur la page actuelle
+        if (simulatedY + weekBlockHeight + weekSpacing > pageHeight - margin - footerTextHeight) {
+            // Nouvelle page nécessaire
             totalPages++;
-            tempY = addPageLayout(doc, totalPages, 0); // Réinitialiser Y pour la nouvelle page
+            simulatedY = margin + headerTitleHeight; // Réinitialiser Y pour la nouvelle page
         }
-        tempY += weekBlockHeight + weekSpacing;
+        simulatedY += weekBlockHeight + weekSpacing; // Avancer Y pour la semaine simulée
     }
+    if (totalPages === 0) totalPages = 1; // Au moins une page même si le contenu tient entièrement
 
-    // Réinitialiser le document pour le rendu final
-    doc.deletePage(1); // Supprimer la première page vide
+    // Supprimer la première page ajoutée par défaut et en ajouter une nouvelle pour le rendu réel
+    doc.deletePage(1);
     doc.addPage();
-    let currentY = addPageLayout(doc, 1, totalPages); // Dessine l'en-tête de la première page, avec footer
+    let currentY = addPageLayout(doc, 1, totalPages); // Dessine l'en-tête de la première page, avec le bon total de pages
 
 
     for (let i = 0; i < relevantWeeksData.length; i++) {
         const week = relevantWeeksData[i];
 
         // Gérer les sauts de page avant de dessiner la semaine actuelle
-        if (currentY + weekBlockHeight + weekSpacing > pageHeight - margin - footerHeight) {
+        if (currentY + weekBlockHeight + weekSpacing > pageHeight - margin - footerTextHeight) {
             doc.addPage();
-            currentY = addPageLayout(doc, doc.internal.pages.length, totalPages); // Dessine l'en-tête de la nouvelle page, avec footer
+            currentY = addPageLayout(doc, doc.internal.pages.length, totalPages); // Dessine l'en-tête de la nouvelle page
         }
         
         let tempX; // Position X pour le dessin des cellules
@@ -1363,7 +1395,7 @@ async function generatePermanencePdfTable(startDate, endDate) {
 }
 
 
-// --- Nouvelles fonctions pour les statistiques (v20.19) ---
+// --- Fonctions pour les statistiques (v20.19) ---
 function showStatsModal() {
     const currentYear = dayjs().year();
     const defaultStartDate = dayjs().startOf('year').format('YYYY-MM-DD');
@@ -1380,7 +1412,6 @@ function showStatsModal() {
             </div>
     `;
 
-    // Pas de boutons dans le footer de la modale principale pour laisser place aux boutons internes
     showModal('Statistiques des Permanences', content, []);
     
     // Générer les stats automatiquement à l'ouverture avec la période par défaut
@@ -1514,4 +1545,140 @@ function exportStatsAsCsv() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast('Statistiques de permanence exportées en CSV !', 'success');
+}
+
+
+// --- Outil de Vérification des Librairies (NOUVEAU) ---
+
+function compareVersions(current, expected) {
+    if (!current || !expected) return 'unknown'; // Si une version est manquante
+
+    const currentParts = current.split('.').map(Number);
+    const expectedParts = expected.split('.').map(Number);
+
+    for (let i = 0; i < Math.max(currentParts.length, expectedParts.length); i++) {
+        const p1 = currentParts[i] || 0;
+        const p2 = expectedParts[i] || 0;
+
+        if (p1 > p2) return 'newer';
+        if (p1 < p2) return 'older';
+    }
+    return 'ok'; // Les versions sont identiques
+}
+
+function checkLibraryVersions() {
+    const results = [];
+
+    // FullCalendar
+    let fcVersion = 'Non détectée';
+    if (typeof FullCalendar !== 'undefined' && FullCalendar.version) {
+        fcVersion = FullCalendar.version;
+    }
+    results.push({
+        name: 'FullCalendar',
+        current: fcVersion,
+        expected: EXPECTED_LIB_VERSIONS.FullCalendar,
+        status: compareVersions(fcVersion, EXPECTED_LIB_VERSIONS.FullCalendar)
+    });
+
+    // Day.js
+    let dayjsVersion = 'Non détectée';
+    if (typeof dayjs !== 'undefined' && dayjs.version) {
+        dayjsVersion = dayjs.version;
+    }
+    results.push({
+        name: 'Day.js',
+        current: dayjsVersion,
+        expected: EXPECTED_LIB_VERSIONS.Day.js,
+        status: compareVersions(dayjsVersion, EXPECTED_LIB_VERSIONS.Day.js)
+    });
+
+    // jsPDF
+    let jspdfVersion = 'Non détectée';
+    if (typeof jspdf !== 'undefined' && jspdf.jsPDF && jspdf.jsPDF.version) {
+        jspdfVersion = jspdf.jsPDF.version;
+    } else if (typeof jspdf !== 'undefined' && jspdf.version) { // Parfois la version est directement sur l'objet jspdf
+        jspdfVersion = jspdf.version;
+    }
+    results.push({
+        name: 'jsPDF',
+        current: jspdfVersion,
+        expected: EXPECTED_LIB_VERSIONS.jsPDF,
+        status: compareVersions(jspdfVersion, EXPECTED_LIB_VERSIONS.jsPDF)
+    });
+
+    displayLibraryCheckResults(results);
+}
+
+function displayLibraryCheckResults(results) {
+    let content = `<p>Voici l'état des versions des librairies utilisées par l'application :</p>`;
+    let allOk = true;
+
+    content += `
+        <table class="library-check-table">
+            <thead>
+                <tr>
+                    <th>Librairie</th>
+                    <th>Version Actuelle</th>
+                    <th>Version Attendue</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    results.forEach(lib => {
+        let statusText = '';
+        let statusClass = '';
+        switch (lib.status) {
+            case 'ok':
+                statusText = 'À jour';
+                statusClass = 'status-ok';
+                break;
+            case 'newer':
+                statusText = 'Plus récent';
+                statusClass = 'status-ok'; // Généralement OK, mais à noter
+                break;
+            case 'older':
+                statusText = 'Obsolète';
+                statusClass = 'status-warn';
+                allOk = false;
+                break;
+            case 'unknown':
+            default:
+                statusText = 'Non détectée / Erreur';
+                statusClass = 'status-error';
+                allOk = false;
+                break;
+        }
+
+        content += `
+            <tr>
+                <td>${lib.name}</td>
+                <td>${lib.current}</td>
+                <td>${lib.expected}</td>
+                <td class="${statusClass}">${statusText}</td>
+            </tr>
+        `;
+    });
+
+    content += `
+            </tbody>
+        </table>
+    `;
+
+    if (!allOk) {
+        content += `<p style="margin-top: 15px; color: ${allOk ? 'inherit' : 'var(--toast-error-bg)'};">
+            Il est recommandé de mettre à jour les librairies obsolètes pour des raisons de sécurité, de performance et de compatibilité.
+        </p>`;
+    } else {
+        content += `<p style="margin-top: 15px; color: var(--toast-success-bg);">Toutes les librairies sont à jour !</p>`;
+    }
+
+    createAndShowModal(
+        'Vérification des Librairies',
+        content,
+        null, null, // Pas de bouton principal
+        'Fermer', 'closeModal()'
+    );
 }
