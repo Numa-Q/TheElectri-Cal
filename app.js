@@ -8,7 +8,8 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.42"; // INCEMENTATION : Fix CSS sidebar buttons, Fix PDF (Lun-Ven, Locale)
+const APP_VERSION = "v20.43"; // INCEMENTATION : Fix CSS sidebar buttons + global buttons, Fix PDF (Lun-Ven, Locale)
+
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
     'permanence': '#28a745', // Vert
@@ -1167,11 +1168,13 @@ function generatePermanencePdfTable() {
     pageNum = 1;
     currentY = addPageLayout(doc, pageNum, 0); // Dessine l'en-tête de la première page
 
-    let iterWeek = dayjs(startDate).startOf('week', { weekStart: 1 }); // Commence au Lundi de la semaine de startDate
-    const endOfRange = dayjs(endDate); // La fin de la période d'export
+    // Début de l'itération par semaine
+    // Force le LUNDI (1) comme début de semaine pour garantir Lun-Ven dans la boucle
+    let iterWeek = dayjs(startDate).startOf('week', { weekStart: 1 });
+    const endOfRangeWeek = dayjs(endDate).endOf('week', { weekStart: 1 }); // Aller jusqu'à la fin de la semaine de endDate
 
     // Itère semaine par semaine jusqu'à ce que le Lundi de la semaine dépasse la fin de la période
-    while (iterWeek.isSameOrBefore(endOfRange.endOf('week'), 'day')) {
+    while (iterWeek.isSameOrBefore(endOfRangeWeek, 'day')) {
         
         console.log("Processing week starting:", iterWeek.format('YYYY-MM-DD'));
 
@@ -1190,18 +1193,19 @@ function generatePermanencePdfTable() {
         const renderedBackup = [];
         let weekContainsDataForPeriod = false; // Indicateur pour savoir si la semaine a des données dans la plage de l'utilisateur
 
-        for (let i = 0; i < 5; i++) { // Toujours 5 jours : Lundi à Vendredi
+        for (let i = 0; i < 5; i++) { // Toujours 5 jours : Lundi à Vendredi (0=Lundi, 1=Mardi, ..., 4=Vendredi)
             const currentDay = iterWeek.add(i, 'day');
             const dateKey = currentDay.format('YYYY-MM-DD');
 
-            console.log(`  Day ${i+1}: ${currentDay.format('dddd DD/MM/YYYY')} (Weekday: ${currentDay.weekday()})`);
+            // --- DEBUT DES LOGS DE DEBUG POUR LE PDF ---
+            console.log(`  Day ${i+1}: ${currentDay.format('dddd DD/MM/YYYY')} (Weekday: ${currentDay.weekday()})`); // 'dddd' pour nom complet
             console.log(`    Is between start/end period: ${currentDay.isBetween(startDate, endDate, 'day', '[]')}`);
+            // --- FIN DES LOGS DE DEBUG POUR LE PDF ---
 
             // En-tête des jours : toujours affiché pour Lun-Ven de la semaine en cours
-            const dayHeaderText = currentDay.locale('fr').format('ddd DD/MM');
+            const dayHeaderText = currentDay.locale('fr').format('ddd DD/MM'); // 'ddd' pour Lun, Mar, etc.
             renderedWeekDays.push(dayHeaderText);
-            console.log(`    Rendered Day Text: ${dayHeaderText}`);
-
+            console.log(`    Rendered Day Text: ${dayHeaderText}`); // Log le texte formaté
 
             // Récupérer les données de permanence si le jour est dans la période sélectionnée
             if (currentDay.isBetween(startDate, endDate, 'day', '[]')) {
@@ -1212,8 +1216,6 @@ function generatePermanencePdfTable() {
                     renderedBackup.push(backups);
                     if (perms || backups) weekContainsDataForPeriod = true; // Marque la semaine si elle contient des données réelles
                 } else {
-                    // Ce cas ne devrait pas arriver pour Lun-Ven si dailyPermanences est correctement pré-rempli
-                    // sauf si dailyPermanences[dateKey] n'a pas été initialisé pour cette date (e.g. weekend, or outside initial `tempDate` loop)
                     renderedPermanence.push('');
                     renderedBackup.push('');
                 }
