@@ -52,7 +52,26 @@
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/isBetween.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/weekday.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/isSameOrBefore.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/maxMin.js"></script>
+    
+    <script>
+        var dayjs_plugin_maxMin = (function () {
+          var minMax = function (option, Dayjs) {
+            Dayjs.prototype.max = function (date) {
+              if (date === void 0) {
+                date = Dayjs();
+              }
+              return this.unix() > date.unix() ? this : date;
+            };
+            Dayjs.prototype.min = function (date) {
+              if (date === void 0) {
+                date = Dayjs();
+              }
+              return this.unix() < date.unix() ? this : date;
+            };
+          };
+          return minMax;
+        })();
+    </script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
