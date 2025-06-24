@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.33"; // INCEMENTATION : Ajout Font Awesome + CDN FullCalendar corrigés
+const APP_VERSION = "v20.34"; // INCEMENTATION : Correction style icônes + persistance 404 FullCalendar
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
