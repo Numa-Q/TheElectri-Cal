@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.15"; // INCEMENTATION : Ajout des options d'export PDF/PNG
+const APP_VERSION = "v20.16"; // INCEMENTATION : Modale d'export stylisée + date de fin par défaut
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -318,7 +318,7 @@ function createDatePicker(id, label, value = '', required = false, dataAttrs = {
     return `
         <div class="form-group">
             <label for="${id}">${label}${required ? ' *' : ''}</label>
-            <input type="date" id="${id}" value="${value}" ${requiredAttr} ${dataAttributes}>
+            <input type="date" id="${id}" value="${value}" ${requiredAttr} ${dataAttrs}>
         </div>
     `;
 }
@@ -646,11 +646,14 @@ function showAddPlanningEventModal(startStr = '', endStr = '') {
     const currentYear = dayjs().year();
     const endOfYear = dayjs().endOf('year').format('YYYY-MM-DD');
 
+    // MODIFIÉ : Assure que la date de fin est la même que la date de début par défaut
+    const defaultEndDate = startStr ? startStr : '';
+
     const content = `
         ${createSelectInput('personSelect', 'Personne', personOptions, people[0].id, true)}
         ${createSelectInput('eventTypeSelect', 'Type d\'événement', eventTypeOptions, 'permanence', true, 'handleEventTypeChange(this.value)')}
         ${createDatePicker('eventStartDate', 'Date de début', startStr, true)}
-        ${createDatePicker('eventEndDate', 'Date de fin (optionnel)', endStr)}
+        ${createDatePicker('eventEndDate', 'Date de fin (optionnel)', defaultEndDate)}
         
         <div id="recurrenceOptions" class="recurring-options" style="display: none;">
             <h4>Récurrence (pour Télétravail récurrent)</h4>
@@ -696,7 +699,7 @@ async function addPlanningEvent() {
     const personId = document.getElementById('personSelect').value;
     const eventType = document.getElementById('eventTypeSelect').value;
     const startDate = document.getElementById('eventStartDate').value;
-    const endDate = document.getElementById('eventEndDate').value;
+    const endDate = document.getElementById('eventEndDate').value; // Récupère la valeur de la date de fin
 
     if (!personId || !eventType || !startDate) {
         showToast('Veuillez remplir tous les champs requis.', 'error');
@@ -713,6 +716,7 @@ async function addPlanningEvent() {
 
     const generateEvent = (start, end, recurrenceGroupId = null) => {
         // La date de fin de FullCalendar est exclusive, donc on ajoute 1 jour
+        // Si endDate est vide, on utilise startDate comme date de fin
         const finalEnd = end ? dayjs(end).add(1, 'day').format('YYYY-MM-DD') : dayjs(start).add(1, 'day').format('YYYY-MM-DD');
         const eventTypeDisplay = getEventTypeDisplayName(eventType);
 
@@ -1049,16 +1053,13 @@ function showExportOptionsModal(exportType) {
         </div>
     `;
 
+    // MODIFIÉ : Utilisation des classes CSS pour les boutons Valider/Annuler
     const buttons = [];
-    if (exportType === 'pdf') {
-        buttons.push({ text: 'Exporter PDF', onclick: 'prepareAndPerformExport("pdf")', class: 'button-primary' });
-    } else if (exportType === 'png') {
-        buttons.push({ text: 'Exporter PNG', onclick: 'prepareAndPerformExport("png")', class: 'button-primary' });
-    }
+    buttons.push({ text: 'Exporter', onclick: `prepareAndPerformExport("${exportType}")`, class: 'button-primary' });
     buttons.push({ text: 'Annuler', onclick: 'closeModal()', class: 'button-secondary' });
 
-    createAndShowModal('Options d\'exportation', content, null, null, null, null); // Pas de boutons dans createAndShowModal, on les gère manuellement
-    modal.querySelector('.modal-footer').innerHTML = buttons.map(btn => `<button class="${btn.class || ''}" onclick="${btn.onclick}">${btn.text}</button>`).join('');
+    // La fonction showModal est maintenant utilisée avec le tableau de boutons stylisés
+    showModal('Options d\'exportation', content, buttons); 
 }
 
 // NOUVEAU : Fonction pour basculer la sélection de toutes les personnes dans la modale d'export
@@ -1089,7 +1090,15 @@ async function prepareAndPerformExport(type) {
 
     let filteredExportEvents = allCalendarEvents.filter(event => {
         const isPersonSelected = selectedPersonIds.includes(event.personId);
-        const isEventTypeSelected = (selectedEventType === 'all' || event.type.startsWith(selectedEventType));
+        // Filtrage plus précis pour les types d'événements
+        let isEventTypeSelected = false;
+        if (selectedEventType === 'all') {
+            isEventTypeSelected = true;
+        } else if (selectedEventType === 'telework') {
+            isEventTypeSelected = event.type === 'telework_punctual' || event.type === 'telework_recurrent';
+        } else {
+            isEventTypeSelected = event.type === selectedEventType;
+        }
         return isPersonSelected && isEventTypeSelected;
     });
 
