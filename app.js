@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.16"; // INCEMENTATION : Modale d'export stylisée + date de fin par défaut
+const APP_VERSION = "v20.17"; // INCEMENTATION : Modale d'export stylisée + date de fin par défaut
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
