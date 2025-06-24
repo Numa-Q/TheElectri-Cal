@@ -20,6 +20,8 @@
     --footer-text-color: #555;
     --person-item-bg: rgba(255, 255, 255, 0.7);
     --person-item-hover-bg: rgba(255, 255, 255, 0.9);
+    /* Ajoutez une variable pour la couleur RGB de votre bouton si vous l'utilisez dans les ombres */
+    --button-bg-rgb: 255, 127, 80; /* RGB de #ff7f50 */
 }
 
 /* Variables CSS pour les couleurs du thème sombre */
@@ -42,6 +44,12 @@ body.dark-mode {
     --footer-text-color: #bbb;
     --person-item-bg: rgba(0, 0, 0, 0.7);
     --person-item-hover-bg: rgba(0, 0, 0, 0.9);
+    --button-bg-rgb: 52, 73, 94; /* RGB de #34495e */
+}
+
+/* Réinitialisation de base pour inclure padding et border dans la largeur/hauteur */
+*, *::before, *::after {
+    box-sizing: border-box;
 }
 
 /* Styles généraux */
@@ -171,27 +179,45 @@ main {
     align-items: center;
 }
 
-.compact-list li .toggle-visibility-btn {
+.compact-list li button { /* Style de base pour les boutons dans les li */
     background: none;
     border: none;
-    color: var(--text-color); /* Utilise la couleur du texte normal */
     cursor: pointer;
     font-size: 1.1em;
     padding: 5px;
-    /* margin-right: 5px;  Retiré, le gap gère l'espacement */
-    transition: color 0.2s ease;
-    box-shadow: none; /* Enlève l'ombre par défaut des boutons */
-    display: flex; /* Pour centrer l'icône */
+    transition: color 0.2s ease, background-color 0.2s ease;
+    box-shadow: none;
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 30px; /* Taille fixe pour le bouton */
+    width: 30px;
     height: 30px;
-    border-radius: 50%; /* Bouton rond */
+    border-radius: 50%;
+}
+
+.compact-list li .toggle-visibility-btn {
+    color: var(--text-color); /* Utilise la couleur du texte normal */
 }
 
 .compact-list li .toggle-visibility-btn:hover {
     color: var(--button-hover-bg); /* Couleur de survol distinctive */
     background-color: rgba(255, 255, 255, 0.2); /* Léger fond au survol */
+}
+
+.compact-list li button.edit-person-btn {
+    color: #007bff; /* Bleu pour modifier */
+}
+.compact-list li button.edit-person-btn:hover {
+    color: #0056b3;
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.compact-list li button.delete-person-btn {
+    color: #dc3545; /* Rouge pour supprimer */
+}
+.compact-list li button.delete-person-btn:hover {
+    color: #c82333;
+    background-color: rgba(220, 53, 69, 0.1);
 }
 /* --- FIN NOUVEAUX STYLES --- */
 
@@ -200,19 +226,6 @@ main {
     background: var(--person-item-hover-bg);
 }
 
-.compact-list li button.edit-person-btn {
-    color: #007bff; /* Bleu pour modifier */
-}
-.compact-list li button.edit-person-btn:hover {
-    color: #0056b3;
-}
-
-.compact-list li button.delete-person-btn {
-    color: #dc3545; /* Rouge pour supprimer */
-}
-.compact-list li button.delete-person-btn:hover {
-    color: #c82333;
-}
 
 /* Styles pour les champs de récurrence (télétravail) */
 .recurring-options {
@@ -227,18 +240,48 @@ main {
     color: var(--text-color);
 }
 
-.day-checkboxes {
+.checkbox-group { /* Renommé de .day-checkboxes pour être plus générique */
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 15px;
 }
 
-.day-checkboxes label {
+.checkbox-group label {
     display: flex;
     align-items: center;
     gap: 5px;
     color: var(--text-color);
+    cursor: pointer; /* Indique que le label est cliquable */
+    background: rgba(255, 255, 255, 0.1); /* Fond léger pour les labels de checkbox */
+    padding: 8px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+body.dark-mode .checkbox-group label {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.checkbox-group label:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+body.dark-mode .checkbox-group label:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.checkbox-group label input[type="checkbox"] {
+    width: auto; /* Annule la largeur 100% par défaut */
+    margin-right: 0;
+    accent-color: var(--button-bg); /* Couleur de la coche */
+}
+.checkbox-group label:has(input:checked) {
+    background-color: var(--button-bg);
+    border-color: var(--button-hover-bg);
+    color: white; /* Texte en blanc pour un meilleur contraste */
+}
+.checkbox-group label:has(input:checked) input[type="checkbox"] {
+    accent-color: white; /* Coche blanche quand sélectionné */
 }
 
 .main-content {
@@ -327,7 +370,7 @@ body.dark-mode .fc-event-selected {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 15px; /* Espace entre header, body, footer */
 }
 
 .modal-header {
@@ -356,6 +399,11 @@ body.dark-mode .fc-event-selected {
 .close-button:focus {
     color: #dc3545; /* Rouge pour le bouton de fermeture au survol */
     text-decoration: none;
+}
+
+.modal-body {
+    flex-grow: 1; /* Permet au contenu de prendre l'espace */
+    overflow-y: auto; /* Pour le défilement si le contenu est long */
 }
 
 .form-group {
@@ -399,25 +447,9 @@ body.dark-mode .form-group textarea {
 .form-group textarea:focus {
     border-color: var(--button-bg);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(var(--button-bg-rgb, 255, 127, 80), 0.2); /* S'il est défini */
+    box-shadow: 0 0 0 2px rgba(var(--button-bg-rgb), 0.2);
 }
 
-.checkbox-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.checkbox-group label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: normal;
-}
-
-.checkbox-group input[type="checkbox"] {
-    width: auto; /* Annule le 100% */
-}
 
 .modal-footer {
     display: flex;
