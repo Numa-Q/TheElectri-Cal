@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.11"; // **INCREMENTATION : Nouvelle version pour IndexedDB et récurrences**
+const APP_VERSION = "v20.12"; // **INCREMENTATION : Correction des problèmes de UI et Day.js**
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -56,7 +56,16 @@ function openDB() {
 function operateOnDB(storeName, mode, operation) {
     return new Promise((resolve, reject) => {
         if (!db) {
-            return reject("IndexedDB not open.");
+            // Tente de rouvrir la DB si elle n'est pas déjà ouverte
+            openDB().then(() => {
+                const transaction = db.transaction([storeName], mode);
+                const store = transaction.objectStore(storeName);
+                const request = operation(store);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => reject(event.target.error);
+            }).catch(reject); // Si openDB échoue
+            return;
         }
         const transaction = db.transaction([storeName], mode);
         const store = transaction.objectStore(storeName);
@@ -66,6 +75,7 @@ function operateOnDB(storeName, mode, operation) {
         request.onerror = (event) => reject(event.target.error);
     });
 }
+
 
 async function addItem(storeName, item) {
     return operateOnDB(storeName, 'readwrite', (store) => store.add(item));
@@ -102,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     dayjs.extend(dayjs_plugin_customParseFormat);
     dayjs.extend(dayjs_plugin_isBetween);
     dayjs.extend(dayjs_plugin_weekday);
-    dayjs.extend(dayjs_plugin_isSameOrAfter); // AJOUT DU PLUGIN POUR isSameOrBefore / isSameOrAfter
+    dayjs.extend(dayjs_plugin_isSameOrAfter); // CORRECTION : AJOUT ESSENTIEL DU PLUGIN EXTEND
 
     try {
         await openDB(); // Ouvre la base de données au démarrage
@@ -137,16 +147,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const addPlanningEventBtn = document.getElementById('addPlanningEventBtn');
     if (addPlanningEventBtn) addPlanningEventBtn.addEventListener('click', showAddPlanningEventModal);
 
-    const exportPlanningBtn = document.getElementById('exportPlanningBtn');
-    if (exportPlanningBtn) exportPlanningBtn.addEventListener('click', () => {
-        showExportModal();
-    });
-
     const exportPdfBtn = document.getElementById('exportPdfBtn');
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportPlanningToPdfMultiMonth);
 
     const exportPngBtn = document.getElementById('exportPngBtn');
-    if (exportPngBtn) exportPlanningToPngMultiMonth();
+    if (exportPngBtn) exportPngBtn.addEventListener('click', exportPlanningToPngMultiMonth); // CORRECTION: click listener manquant
 
     const exportJsonBtn = document.getElementById('exportJsonBtn');
     if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportDataToJson);
@@ -197,11 +202,17 @@ function showModal(contentHtml, title, buttons = []) {
         modal.classList.add('modal');
         document.getElementById('modalsContainer').appendChild(modal);
     }
+    // Nettoyer les écouteurs d'événements précédents si la modale est réutilisée
+    const oldCloseButton = modal.querySelector('.close-button');
+    if (oldCloseButton) {
+        oldCloseButton.removeEventListener('click', closeModal);
+    }
+
     modal.innerHTML = `
         <div class="modal-content">
             <div class="modal-header">
                 <h2>${title}</h2>
-                <span class="close-button" onclick="closeModal()">&times;</span>
+                <span class="close-button">&times;</span>
             </div>
             <div class="modal-body">
                 ${contentHtml}
@@ -211,9 +222,19 @@ function showModal(contentHtml, title, buttons = []) {
             </div>
         </div>
     `;
-    modal.style.display = 'block';
+    modal.style.display = 'flex'; // CORRECTION: Assure le centrage via flexbox
     setTimeout(() => modal.classList.add('show'), 10);
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden'; // Empêche le défilement du body
+
+    // Ajouter l'écouteur d'événement au bouton de fermeture
+    modal.querySelector('.close-button').addEventListener('click', closeModal);
+
+    // Fermer la modale si on clique en dehors du contenu
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
 }
 
 function closeModal() {
@@ -222,19 +243,19 @@ function closeModal() {
         modal.classList.remove('show');
         modal.addEventListener('transitionend', () => {
             modal.style.display = 'none';
-            modal.innerHTML = ''; // Nettoyer le contenu
+            modal.innerHTML = ''; // Nettoyer le contenu pour éviter les fuites de mémoire
         }, { once: true });
     }
-    document.body.style.overflow = '';
+    document.body.style.overflow = ''; // Rétablit le défilement du body
 }
 
 function createAndShowModal(title, content, primaryButtonText, primaryButtonAction, cancelButtonText = 'Annuler', cancelButtonAction = 'closeModal()') {
     const buttons = [];
     if (primaryButtonText && primaryButtonAction) {
-        buttons.push({ text: primaryButtonText, onclick: primaryButtonAction, class: 'button-primary' });
+        buttons.push({ text: primaryButtonText, onclick: primaryButtonAction, class: 'button-primary' }); // CORRECTION: classe button-primary
     }
     if (cancelButtonText && cancelButtonAction) {
-        buttons.push({ text: cancelButtonText, onclick: cancelButtonAction, class: 'button-secondary' });
+        buttons.push({ text: cancelButtonText, onclick: cancelButtonAction, class: 'button-secondary' }); // CORRECTION: classe button-secondary
     }
     showModal(content, title, buttons);
 }
@@ -723,7 +744,7 @@ async function addPlanningEvent() {
         let currentDay = dayjs(startDate);
         const endRecurrenceDayjs = dayjs(recurrenceEndDate);
 
-        while (currentDay.isSameOrBefore(endRecurrenceDayjs, 'day')) { // Utilisation correcte de isSameOrBefore grâce au plugin
+        while (currentDay.isSameOrBefore(endRecurrenceDayjs, 'day')) { // Utilisation correcte de isSameOrBefore
             if (recurrenceDays.includes(currentDay.day())) {
                 eventsToAdd.push(generateEvent(currentDay.format('YYYY-MM-DD'), currentDay.format('YYYY-MM-DD'), recurrenceGroupId));
             }
@@ -766,6 +787,7 @@ function showEditPlanningEventModal(eventId) {
 
     let deleteButtonsHtml = `<button class="button-danger" onclick="confirmDeleteEvent('${event.id}')">Supprimer cet événement</button>`;
     if (event.recurrenceGroupId) {
+        // CORRECTION: Ajouter la classe ml-2 ici
         deleteButtonsHtml += `<button class="button-danger ml-2" onclick="confirmDeleteRecurrenceSeries('${event.recurrenceGroupId}')">Supprimer la série récurrente</button>`;
     }
 
@@ -978,19 +1000,6 @@ async function importDataFromJson() {
     }
 }
 
-function showExportModal() {
-    const content = `<p>Choisissez un format d'exportation :</p>`;
-    createAndShowModal(
-        'Options d\'exportation',
-        content,
-        null, null,
-        'Fermer'
-    );
-}
-
-// Les fonctions exportPlanningToPdfMultiMonth et exportPlanningToPngMultiMonth restent inchangées
-// car elles agissent sur le rendu actuel du calendrier, pas sur le stockage des données.
-
 async function exportPlanningToPdfMultiMonth() {
     showToast("Génération du PDF en cours...", 'info', 5000);
     const calendarEl = document.getElementById('calendar');
@@ -1015,32 +1024,34 @@ async function exportPlanningToPdfMultiMonth() {
         let currentMonth = dayjs(originalDate).startOf('month');
         let currentPage = 1;
 
-        const numberOfMonthsToExport = 2;
+        const numberOfMonthsToExport = 2; // Exportation pour le mois actuel et le suivant
 
         for (let i = 0; i < numberOfMonthsToExport; i++) {
             if (currentPage > 1) {
                 pdf.addPage();
             }
             calendar.gotoDate(currentMonth.toDate());
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 100)); // Laisser le temps au calendrier de se rendre
 
             const canvas = await html2canvas(calendarEl, {
-                scale: 2,
+                scale: 2, // Augmente la résolution
                 useCORS: true,
                 logging: false,
-                backgroundColor: null
+                backgroundColor: null // Important pour les thèmes clairs/sombres
             });
 
             const imgData = canvas.toDataURL('image/png');
             const imgWidthPx = canvas.width;
             const imgHeightPx = canvas.height;
 
+            // Convertir les pixels en millimètres (1 inch = 25.4 mm, 96 dpi par défaut pour html2canvas)
             const imgWidthMm = imgWidthPx * 25.4 / 96;
             const imgHeightMm = imgHeightPx * 25.4 / 96;
 
             let finalWidthMm, finalHeightMm;
             const aspectRatio = imgWidthMm / imgHeightMm;
 
+            // Redimensionner si l'image est plus grande que la page PDF
             if (imgWidthMm > availableWidth || imgHeightMm > availableHeight) {
                 if (aspectRatio > availableWidth / availableHeight) {
                     finalWidthMm = availableWidth;
@@ -1054,6 +1065,7 @@ async function exportPlanningToPdfMultiMonth() {
                 finalHeightMm = imgHeightMm;
             }
 
+            // Centrer l'image sur la page
             const x = (pdfPageWidthMm - finalWidthMm) / 2;
             const y = (pdfPageHeightMm - finalHeightMm) / 2;
 
@@ -1070,6 +1082,7 @@ async function exportPlanningToPdfMultiMonth() {
         console.error('Erreur lors de l\'exportation PDF multi-mois :', error);
         showToast("Erreur lors de l'exportation PDF multi-mois. Vérifiez la console.", 'error');
     } finally {
+        // Restaurer la vue et la date originales, même en cas d'erreur
         calendar.changeView(originalView);
         calendar.gotoDate(originalDate);
     }
@@ -1090,17 +1103,17 @@ async function exportPlanningToPngMultiMonth() {
         calendar.changeView('dayGridMonth');
 
         let currentMonth = dayjs(originalDate).startOf('month');
-        const numberOfMonthsToExport = 2;
+        const numberOfMonthsToExport = 2; // Exportation pour le mois actuel et le suivant
 
         for (let i = 0; i < numberOfMonthsToExport; i++) {
             calendar.gotoDate(currentMonth.toDate());
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 100)); // Laisser le temps au calendrier de se rendre
 
             const canvas = await html2canvas(calendarEl, {
-                scale: 2,
+                scale: 2, // Augmente la résolution
                 useCORS: true,
                 logging: false,
-                backgroundColor: null
+                backgroundColor: null // Important pour les thèmes clairs/sombres
             });
 
             const imgUrl = canvas.toDataURL('image/png');
@@ -1120,6 +1133,7 @@ async function exportPlanningToPngMultiMonth() {
         console.error('Erreur lors de l\'exportation PNG multi-mois :', error);
         showToast("Erreur lors de l'exportation PNG multi-mois. Vérifiez la console.", 'error');
     } finally {
+        // Restaurer la vue et la date originales, même en cas d'erreur
         calendar.changeView(originalView);
         calendar.gotoDate(originalDate);
     }
