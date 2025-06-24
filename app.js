@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.45"; // INCEMENTATION : FIX Jours PDF en français
+const APP_VERSION = "v20.46"; // INCEMENTATION : PDF en format Paysage pour le planning des permanences
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -507,7 +507,7 @@ function showEditPersonModal(personId) {
         `Modifier ${person.name}`,
         content,
         'Sauvegarder',
-        `editPerson('${personId}')`
+        `editPerson('${person.id}')`
     );
 }
 
@@ -556,7 +556,7 @@ function confirmDeletePerson(personId) {
         'Confirmer la suppression',
         `<p>Êtes-vous sûr de vouloir supprimer la personne "${person.name}" ? Tous les événements associés à cette personne seront également supprimés.</p>`,
         'Supprimer',
-        `deletePerson('${personId}')`,
+        `deletePerson('${person.id}')`,
         'Annuler'
     );
 }
@@ -1170,13 +1170,18 @@ async function generatePermanencePdfTable(startDate, endDate) {
         return;
     }
 
-    const doc = new jspdf.jsPDF('p', 'mm', 'a4');
+    // MODIFICATION ICI : Passer en mode Paysage ('l' pour landscape)
+    const doc = new jspdf.jsPDF('l', 'mm', 'a4'); // 'l' pour paysage
     doc.setFont('helvetica'); // Use a standard font
 
     const margin = 10; // mm
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const colWidth = (pageWidth - 2 * margin) / 5; // Toujours 5 colonnes pour Lun-Ven
+    // Invert pageSize dimensions for landscape
+    const pageWidth = doc.internal.pageSize.getWidth(); // This will now be the longer dimension of A4
+    const pageHeight = doc.internal.pageSize.getHeight(); // This will now be the shorter dimension of A4
+    
+    // Recalculate colWidth based on new pageWidth
+    const colWidth = (pageWidth - 2 * margin) / 5; // Still 5 columns for Mon-Fri
+    
     const lineHeight = 7; // mm par ligne de texte (dates, permanences, backups)
     const weekBlockHeight = 3 * lineHeight; // 3 lignes par semaine
     const weekSpacing = 5; // mm d'espace entre les blocs de semaines
