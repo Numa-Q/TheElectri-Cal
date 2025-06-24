@@ -6,7 +6,6 @@
     <title>The Electri-Cal</title>
     <link href='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.17/main.min.css' rel='stylesheet' />
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
     <header>
@@ -17,7 +16,7 @@
         <aside class="sidebar">
             <h2>Actions</h2>
             <button id="addPersonBtn">Ajouter une personne</button>
-            <button id="addPlanningEventBtn" onclick="showAddPlanningEventModal()">Gérer les Présences/Absences</button>
+            <button id="addPlanningEventBtn">Gérer les Présences/Absences</button>
             <button id="exportPdfBtn">Exporter PDF</button>
             <button id="exportPngBtn">Exporter PNG</button>
             <button id="exportJsonBtn">Exporter JSON</button>
@@ -28,7 +27,7 @@
             <div class="people-list-container glass-effect">
                 <h3>Personnes habilitées</h3>
                 <ul id="peopleList" class="compact-list">
-                    </ul>
+                </ul>
             </div>
         </aside>
 
@@ -46,35 +45,14 @@
 
     <script src='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.17/index.global.min.js'></script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.17/locales-all.min.js'></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/dayjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/customParseFormat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/isBetween.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/weekday.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.13/plugin/isSameOrBefore.js"></script>
-    
-    <script>
-        var dayjs_plugin_maxMin = (function () {
-          var minMax = function (option, Dayjs) {
-            Dayjs.prototype.max = function (date) {
-              if (date === void 0) {
-                date = Dayjs();
-              }
-              return this.unix() > date.unix() ? this : date;
-            };
-            Dayjs.prototype.min = function (date) {
-              if (date === void 0) {
-                date = Dayjs();
-              }
-              return this.unix() < date.unix() ? this : date;
-            };
-          };
-          return minMax;
-        })();
-    </script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/customParseFormat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isBetween.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/weekday.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrBefore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/maxMin.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
