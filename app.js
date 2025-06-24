@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.47"; // INCEMENTATION : Correction de la double pagination du PDF
+const APP_VERSION = "v20.48"; // INCEMENTATION : Correction de la double pagination du PDF
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
