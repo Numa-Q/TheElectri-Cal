@@ -74,7 +74,8 @@ main {
     flex: 1; /* Permet au main de prendre l'espace restant */
     padding: 20px;
     gap: 20px;
-    max-width: 1200px;
+    max-width: 1200px; /* Conserve une largeur maximale pour la lisibilité */
+    width: calc(100% - 40px); /* Prend 100% de la largeur moins le padding total */
     margin: 20px auto; /* Centre le contenu principal */
     background: var(--main-bg-color);
     border-radius: 15px;
@@ -123,6 +124,7 @@ main {
     border: 1px solid rgba(255, 255, 255, 0.2);
     transition: background-color 0.2s ease;
     color: var(--sidebar-text-color);
+    min-height: 45px; /* Assure une hauteur minimale pour les boutons */
 }
 
 .dark-mode .sidebar li {
@@ -144,21 +146,33 @@ main {
 }
 
 .person-actions button {
-    background: none;
-    border: none;
-    color: var(--text-color);
+    /* MODIFIED: Added default background and border for better visibility */
+    background-color: rgba(0, 0, 0, 0.03); /* Very subtle background */
+    border: 1px solid rgba(0, 0, 0, 0.05); /* Very subtle border */
+    color: var(--text-color); /* Uses text color for icons */
     cursor: pointer;
     margin-left: 5px;
     font-size: 0.9em;
     padding: 5px;
     border-radius: 5px;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.dark-mode .person-actions button {
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .person-actions button:hover {
     background-color: var(--button-hover-bg);
     color: white;
+    border-color: var(--button-hover-bg); /* Match border color on hover */
 }
+/* Ensure the icon itself inherits color */
+.person-actions button i {
+    color: inherit; /* Ensure icon color matches button text color */
+}
+
 
 .main-content {
     flex: 1; /* Le contenu principal prend l'espace restant */
@@ -575,5 +589,3 @@ p.info-message {
         gap: 10px;
     }
 }
-
-/* Anciennes règles @media print et export-mode sont supprimées */
