@@ -9,7 +9,7 @@ const STORAGE_KEY_EVENTS = 'electricalPermanenceEvents'; // Pour les futurs év�
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.5"; // Incrémentation de la version
+const APP_VERSION = "v20.6"; // Incrémentation de la version
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log(`${APP_NAME} - Version ${APP_VERSION} chargée !`);
@@ -358,7 +358,7 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
             <option value="holiday">Congé</option>
         </select>
 
-        <div id="dateRangeFields">
+        <div id="dateRangeFields" style="display: none;">
             <label for="startDate">Date de début :</label>
             <input type="date" id="startDate" value="${startStr}">
 
@@ -383,11 +383,11 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
     `;
 
     showModal(
-        "Gérer les Présences/Absences", // Nouveau titre de la modale
+        "Gérer les Présences/Absences",
         content,
         () => {
             const personId = document.getElementById('eventPerson').value;
-            const eventType = document.getElementById('eventType').value; // Renommé en eventType pour éviter la confusion
+            const eventType = document.getElementById('eventType').value;
             const selectedPerson = people.find(p => p.id === personId);
 
             if (!selectedPerson) {
@@ -408,7 +408,6 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
                     showToast("Veuillez spécifier une date de fin pour le télétravail répétitif.", "error");
                     return;
                 }
-                // addRecurringTelework va créer des événements de type 'telework'
                 addRecurringTelework(personId, selectedPerson.name, selectedDays, recurringUntilDate);
             } else { // permanence, telework-single, holiday
                 let startDate = document.getElementById('startDate').value;
@@ -458,7 +457,8 @@ function showAddPlanningEventModal(startStr, endStr = startStr) {
     // Attacher l'écouteur d'événements
     eventTypeSelect.addEventListener('change', updateVisibility);
 
-    // Déclencher la fonction au chargement initial de la modale
+    // Déclencher la fonction au chargement initial de la modale (important !)
+    // S'assurer que le display par défaut est correct
     updateVisibility();
 }
 
@@ -479,20 +479,28 @@ function showEditEventModal(event) {
     // Ajuster la date de fin pour l'affichage (FullCalendar est exclusif)
     let displayEndDate = event.endStr ? dayjs(event.endStr).subtract(1, 'day').format('YYYY-MM-DD') : dayjs(event.startStr).format('YYYY-MM-DD');
 
-    const content = `
+    let content = `
         <p><strong>Personne :</strong> ${personName}</p>
         <p><strong>Type :</strong> ${eventTypeDisplay}</p>
         <p><strong>Du :</strong> ${dayjs(event.startStr).format('DD/MM/YYYY')}</p>
         <p><strong>Au :</strong> ${dayjs(event.startStr).isSame(dayjs(displayEndDate), 'day') ? '(jour unique)' : dayjs(displayEndDate).format('DD/MM/YYYY')}</p>
         <div style="margin-top: 20px; text-align: center;">
-            <button id="deleteEventBtn" style="background-color: #dc3545; color: white;">Supprimer l'événement</button>
-        </div>
+            <button id="deleteEventBtn" style="background-color: #dc3545; color: white; margin-right: 10px;">Supprimer cet événement</button>
     `;
+
+    // Si c'est un événement de télétravail récurrent, ajouter l'option de suppression de série
+    if (event.extendedProps.type === 'telework' && event.extendedProps.recurringSeriesId) {
+        content += `
+            <button id="deleteRecurringSeriesBtn" style="background-color: #f0ad4e; color: white;">Supprimer la série répétitive</button>
+        `;
+    }
+    content += `</div>`;
+
 
     showModal(
         "Détails de l'événement",
         content,
-        () => { /* Pas de confirmation directe, le bouton de suppression a son propre handler */ },
+        () => { /* Pas de confirmation directe, les boutons de suppression ont leur propre handler */ },
         () => { /* Annulation de la modale */ },
         false, // Pas de bouton confirmer général
         true   // Bouton annuler (fermer)
@@ -512,6 +520,24 @@ function showEditEventModal(event) {
             }
         );
     });
+
+    // Écouteur pour le bouton de suppression de série
+    const deleteRecurringSeriesBtn = document.getElementById('deleteRecurringSeriesBtn');
+    if (deleteRecurringSeriesBtn) {
+        deleteRecurringSeriesBtn.addEventListener('click', () => {
+            showModal(
+                "Confirmer la suppression de la série",
+                "Êtes-vous sûr de vouloir supprimer TOUS les événements de cette série de télétravail répétitif pour cette personne ?",
+                () => {
+                    deleteRecurringSeries(event.extendedProps.recurringSeriesId, event.extendedProps.personId);
+                    showToast("Série de télétravail répétitif supprimée avec succès.", "success");
+                },
+                () => {
+                    showToast("Suppression de la série annulée.", "info");
+                }
+            );
+        });
+    }
 }
 
 
@@ -522,8 +548,9 @@ function showEditEventModal(event) {
  * @param {'telework'|'holiday'|'permanence'} type - Type d'événement.
  * @param {string} start - Date de début (YYYY-MM-DD).
  * @param {string} end - Date de fin (YYYY-MM-DD), exclusive pour FullCalendar.
+ * @param {string} [recurringSeriesId] - ID de la série de récurrence (optionnel).
  */
-function addEventToCalendar(personId, personName, type, start, end) {
+function addEventToCalendar(personId, personName, type, start, end, recurringSeriesId = null) {
     let title = '';
     let classNames = [];
     if (type === 'telework') {
@@ -546,7 +573,8 @@ function addEventToCalendar(personId, personName, type, start, end) {
         allDay: true,
         classNames: classNames,
         extendedProps: {
-            type: type
+            type: type,
+            recurringSeriesId: recurringSeriesId // Ajout de l'ID de série
         }
     };
     calendar.addEvent(newEvent);
@@ -561,6 +589,8 @@ function addEventToCalendar(personId, personName, type, start, end) {
  * @param {string} untilDateStr - Date de fin de la récurrence (YYYY-MM-DD).
  */
 function addRecurringTelework(personId, personName, daysOfWeek, untilDateStr) {
+    const recurringSeriesId = `recurring_${Date.now()}_${personId}`; // ID unique pour cette série
+
     let currentDate = dayjs(); // Commence à partir d'aujourd'hui
     const untilDate = dayjs(untilDateStr);
 
@@ -570,11 +600,9 @@ function addRecurringTelework(personId, personName, daysOfWeek, untilDateStr) {
     while (currentDate.isBefore(untilDate) || currentDate.isSame(untilDate, 'day')) {
         // dayjs().day() retourne 0 pour dimanche, 1 pour lundi, etc.
         // Nos checkboxes vont de 1 (lundi) à 5 (vendredi).
-        // Il faut s'assurer que les valeurs de la checkbox correspondent aux valeurs de dayjs().day().
-        // Lundi=1, Mardi=2, Mercredi=3, Jeudi=4, Vendredi=5
         if (daysOfWeek.includes(currentDate.day())) {
-            // Ajouter un événement de télétravail pour ce jour
-            addEventToCalendar(personId, personName, 'telework', currentDate.format('YYYY-MM-DD'), currentDate.add(1, 'day').format('YYYY-MM-DD'));
+            // Ajouter un événement de télétravail pour ce jour, avec l'ID de série
+            addEventToCalendar(personId, personName, 'telework', currentDate.format('YYYY-MM-DD'), currentDate.add(1, 'day').format('YYYY-MM-DD'), recurringSeriesId);
             eventsGenerated++;
             if (eventsGenerated >= maxEvents) {
                 showToast("Trop d'événements générés pour la contrainte répétitive. Limite atteinte.", "error");
@@ -584,6 +612,22 @@ function addRecurringTelework(personId, personName, daysOfWeek, untilDateStr) {
         currentDate = currentDate.add(1, 'day');
     }
     showToast(`Télétravail répétitif ajouté pour ${personName}. ${eventsGenerated} événements générés.`, 'success');
+}
+
+/**
+ * Supprime tous les événements appartenant à une série de récurrence spécifique pour une personne donnée.
+ * @param {string} seriesId - L'ID de la série de récurrence à supprimer.
+ * @param {string} personId - L'ID de la personne concernée par la série.
+ */
+function deleteRecurringSeries(seriesId, personId) {
+    const eventsToDelete = calendar.getEvents().filter(event =>
+        event.extendedProps.type === 'telework' &&
+        event.extendedProps.recurringSeriesId === seriesId &&
+        event.extendedProps.personId === personId
+    );
+
+    eventsToDelete.forEach(event => event.remove());
+    saveCalendarEvents(); // Sauvegarder après la suppression
 }
 
 
@@ -599,7 +643,7 @@ function saveCalendarEvents() {
         end: event.endStr,
         allDay: event.allDay,
         classNames: event.classNames,
-        extendedProps: event.extendedProps
+        extendedProps: event.extendedProps // Assure que les extendedProps sont conservées
     }));
     localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
 }
