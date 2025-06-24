@@ -10,7 +10,7 @@ const STORAGE_KEY_EVENTS = 'electricalPermanenceEvents'; // Pour les futurs év�
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.9"; // **INCREMENTATION : Nouvelle version**
+const APP_VERSION = "v20.10"; // **INCREMENTATION : Nouvelle version pour corrections**
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -227,10 +227,6 @@ function createDatePicker(id, label, value = '', required = false, dataAttrs = {
     `;
 }
 
-// NOTE: createTimePicker et createColorPicker sont supprimés des modales
-// function createTimePicker(id, label, value = '', required = false) { ... }
-// function createColorPicker(id, label, value = '#007bff') { ... }
-
 
 // --- Gestion des personnes ---
 function savePeopleToLocalStorage() {
@@ -244,8 +240,7 @@ function loadPeopleFromLocalStorage() {
         people = people.map(p => ({
             ...p,
             isVisible: p.isVisible !== undefined ? p.isVisible : true, // Par défaut visible
-            // NOTE : La propriété `color` des personnes n'est plus utilisée pour les événements
-            // Elle peut être conservée ici pour d'autres usages futurs, mais elle n'affectera plus la couleur des événements
+            // La propriété `color` des personnes n'est plus utilisée pour les événements
             color: p.color || null // Garder pour la compatibilité, mais pas utilisée pour les events
         }));
     }
@@ -311,8 +306,7 @@ function togglePersonVisibility(personId, buttonElement) {
 function showAddPersonModal() {
     const content = `
         ${createInput('personName', 'Nom de la personne', 'text', '', 'Ex: Jean Dupont', true)}
-        ${createInput('personColor', 'Couleur d\'affichage (non utilisée pour les événements)', 'color', '#007bff')}
-    `;
+        `;
     createAndShowModal(
         'Ajouter une nouvelle personne',
         content,
@@ -323,9 +317,8 @@ function showAddPersonModal() {
 
 function addPerson() {
     const nameInput = document.getElementById('personName');
-    const colorInput = document.getElementById('personColor'); // Garder pour la forme, mais sa valeur est ignorée pour les événements
     const name = nameInput ? nameInput.value.trim() : '';
-    const color = colorInput ? colorInput.value : '#007bff'; // Par défaut, une couleur, mais ignorée pour les events
+    // La couleur n'est plus collectée ni utilisée
 
     if (!name) {
         showToast('Le nom de la personne est requis.', 'error');
@@ -340,7 +333,7 @@ function addPerson() {
     const newPerson = {
         id: crypto.randomUUID(),
         name: name,
-        color: color, // Stocke la couleur, mais n'est pas utilisée pour l'affichage des événements
+        color: null, // Initialisé à null ou supprimé, car non utilisé pour l'affichage des events
         isVisible: true
     };
     people.push(newPerson);
@@ -361,8 +354,7 @@ function showEditPersonModal(personId) {
 
     const content = `
         ${createInput('editPersonName', 'Nom de la personne', 'text', person.name, 'Ex: Jean Dupont', true)}
-        ${createInput('editPersonColor', 'Couleur d\'affichage (non utilisée pour les événements)', 'color', person.color || '#007bff')}
-    `;
+        `;
     createAndShowModal(
         `Modifier ${person.name}`,
         content,
@@ -373,9 +365,7 @@ function showEditPersonModal(personId) {
 
 function editPerson(personId) {
     const nameInput = document.getElementById('editPersonName');
-    const colorInput = document.getElementById('editPersonColor'); // Garder pour la forme
     const newName = nameInput ? nameInput.value.trim() : '';
-    const newColor = colorInput ? colorInput.value : ''; // Garder pour la forme
 
     if (!newName) {
         showToast('Le nom de la personne est requis.', 'error');
@@ -391,15 +381,13 @@ function editPerson(personId) {
 
         const oldName = person.name;
         person.name = newName;
-        person.color = newColor; // Met à jour la couleur dans l'objet personne (mais pas pour les events)
+        // La couleur n'est plus modifiée ici
 
         // Mettre à jour les titres des événements existants si le nom de la personne change
         allCalendarEvents.forEach(event => {
             if (event.personId === person.id) {
-                // Le titre doit être mis à jour pour refléter le nouveau nom
                 const eventTypeDisplay = getEventTypeDisplayName(event.type);
                 event.title = `${person.name} (${eventTypeDisplay})`;
-                // Les couleurs ne sont pas modifiées ici car elles sont basées sur le type d'événement
             }
         });
 
@@ -634,15 +622,16 @@ function addPlanningEvent() {
 
     // Logique de récurrence uniquement si le type est 'telework_recurrent'
     if (eventType === 'telework_recurrent' && recurrenceDays.length > 0 && recurrenceEndDate) {
-        let currentDay = dayjs(startDate);
-        const endRecurrence = dayjs(recurrenceEndDate);
+        let currentDay = dayjs(startDate); // S'assurer que c'est une instance Day.js
+        const endRecurrenceDayjs = dayjs(recurrenceEndDate); // S'assurer que c'est une instance Day.js
 
-        while (currentDay.isSameOrBefore(endRecurrence, 'day')) {
+        // Correction pour isSameOrBefore: utiliser isBefore avec add(1, 'day') sur la date de fin
+        while (currentDay.isBefore(endRecurrenceDayjs.add(1, 'day'), 'day')) {
             if (recurrenceDays.includes(currentDay.day())) { // dayjs().day() -> 0=Dimanche, 1=Lundi
                 // Pour les événements récurrents, ils sont toujours d'un jour (sans plage spécifique)
                 eventsToAdd.push(generateEvent(currentDay.format('YYYY-MM-DD'), currentDay.format('YYYY-MM-DD')));
             }
-            currentDay = currentDay.add(1, 'day');
+            currentDay = currentDay.add(1, 'day'); // Avancer d'un jour
         }
     } else {
         // Pour les événements non récurrents ou télétravail ponctuel
@@ -658,7 +647,7 @@ function addPlanningEvent() {
     showToast(`Événement(s) pour ${person.name} ajouté(s) !`, 'success');
 }
 
-function showEditPlanningEventModal(eventId) { // eventType et personId ne sont plus nécessaires comme arguments directs
+function showEditPlanningEventModal(eventId) {
     const event = allCalendarEvents.find(e => e.id === eventId);
     if (!event) {
         showToast("Événement introuvable.", "error");
@@ -674,18 +663,12 @@ function showEditPlanningEventModal(eventId) { // eventType et personId ne sont 
     ];
 
     const startDate = event.start ? dayjs(event.start).format('YYYY-MM-DD') : '';
-    // Pour l'affichage, si FullCalendar a mis un end = start + 1 day pour un événement d'un jour,
-    // on veut afficher la date de fin réelle, pas le jour exclusif.
     let endDate = '';
     if (event.end) {
         const endDayjs = dayjs(event.end);
-        // Si c'est un événement de plusieurs jours (ou un seul jour avec end exclusif)
         endDate = endDayjs.subtract(1, 'day').format('YYYY-MM-DD');
     }
 
-    // La logique de récurrence n'est pas modifiable directement via la modale d'édition pour les événements existants
-    // Elle concerne principalement l'ajout initial. Pour modifier une série, il faudrait une logique plus complexe.
-    // On cache ces options pour l'édition afin d'éviter la complexité.
     const content = `
         ${createSelectInput('editPersonSelect', 'Personne', personOptions, event.personId, true)}
         ${createSelectInput('editEventTypeSelect', 'Type d\'événement', eventTypeOptions, event.type, true)}
