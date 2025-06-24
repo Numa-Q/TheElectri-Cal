@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.31"; // INCEMENTATION : Correction Day.js max/min + SyntaxError général + CDN FullCalendar
+const APP_VERSION = "v20.32"; // INCEMENTATION : Correction Day.js plugin minMax + Correction Day.js max/min + SyntaxError général + CDN FullCalendar
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -113,7 +113,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     dayjs.extend(dayjs_plugin_isBetween);
     dayjs.extend(dayjs_plugin_weekday);
     dayjs.extend(dayjs_plugin_isSameOrBefore);
-    dayjs.extend(dayjs_plugin_maxMin); // NOUVEAU : Ajout du plugin maxMin
+    // CORRECTION ICI : maxMin remplacé par minMax
+    dayjs.extend(dayjs_plugin_minMax); 
 
     try {
         await openDB(); // Ouvre la base de données au démarrage
