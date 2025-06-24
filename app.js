@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.41"; // INCEMENTATION : Fix PDF (Lun-Ven, pagination), Fix CSS sidebar buttons/list
+const APP_VERSION = "v20.42"; // INCEMENTATION : Fix CSS sidebar buttons, Fix PDF (Lun-Ven, Locale)
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
     'permanence': '#28a745', // Vert
@@ -115,6 +115,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     dayjs.extend(dayjs_plugin_isSameOrBefore);
     dayjs.extend(dayjs_plugin_minMax);
     dayjs.extend(dayjs_plugin_isSameOrAfter);
+    dayjs.locale('fr'); // GLOBALEMENT : Définir la locale française pour Day.js
 
     try {
         await openDB(); // Ouvre la base de données au démarrage
@@ -1119,6 +1120,8 @@ function generatePermanencePdfTable() {
         return margin + 15; // Retourne la position Y après l'en-tête
     };
 
+    console.log("Day.js current locale at PDF generation start:", dayjs.locale()); // Should be 'fr'
+
     // Agrégation des données par jour (Lun-Ven uniquement, dans la période d'export)
     const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: new Set(), permanence_backup: new Set() } }
     let tempDate = dayjs(startDate);
@@ -1170,6 +1173,8 @@ function generatePermanencePdfTable() {
     // Itère semaine par semaine jusqu'à ce que le Lundi de la semaine dépasse la fin de la période
     while (iterWeek.isSameOrBefore(endOfRange.endOf('week'), 'day')) {
         
+        console.log("Processing week starting:", iterWeek.format('YYYY-MM-DD'));
+
         // Gérer les sauts de page avant de dessiner la semaine actuelle
         if (currentY + weekBlockHeight + weekSpacing > pageHeight - margin - footerHeight) {
             doc.addPage();
@@ -1189,8 +1194,14 @@ function generatePermanencePdfTable() {
             const currentDay = iterWeek.add(i, 'day');
             const dateKey = currentDay.format('YYYY-MM-DD');
 
+            console.log(`  Day ${i+1}: ${currentDay.format('dddd DD/MM/YYYY')} (Weekday: ${currentDay.weekday()})`);
+            console.log(`    Is between start/end period: ${currentDay.isBetween(startDate, endDate, 'day', '[]')}`);
+
             // En-tête des jours : toujours affiché pour Lun-Ven de la semaine en cours
-            renderedWeekDays.push(currentDay.locale('fr').format('ddd DD/MM'));
+            const dayHeaderText = currentDay.locale('fr').format('ddd DD/MM');
+            renderedWeekDays.push(dayHeaderText);
+            console.log(`    Rendered Day Text: ${dayHeaderText}`);
+
 
             // Récupérer les données de permanence si le jour est dans la période sélectionnée
             if (currentDay.isBetween(startDate, endDate, 'day', '[]')) {
@@ -1202,6 +1213,7 @@ function generatePermanencePdfTable() {
                     if (perms || backups) weekContainsDataForPeriod = true; // Marque la semaine si elle contient des données réelles
                 } else {
                     // Ce cas ne devrait pas arriver pour Lun-Ven si dailyPermanences est correctement pré-rempli
+                    // sauf si dailyPermanences[dateKey] n'a pas été initialisé pour cette date (e.g. weekend, or outside initial `tempDate` loop)
                     renderedPermanence.push('');
                     renderedBackup.push('');
                 }
@@ -1210,8 +1222,13 @@ function generatePermanencePdfTable() {
                 renderedPermanence.push('');
                 renderedBackup.push('');
             }
+            console.log(`    dailyPermanences[${dateKey}]:`, dailyPermanences[dateKey] ? Array.from(dailyPermanences[dateKey].permanence) : 'N/A', dailyPermanences[dateKey] ? Array.from(dailyPermanences[dateKey].permanence_backup) : 'N/A');
         }
         
+        console.log("  Week Headers to render:", renderedWeekDays);
+        console.log("  Permanence Data for week:", renderedPermanence);
+        console.log("  Backup Data for week:", renderedBackup);
+
         // Dessiner la semaine seulement si elle contient des données pour la période sélectionnée,
         // ou si c'est la semaine de début/fin de la période.
         const isStartWeekOfPeriod = iterWeek.isSame(startDate, 'week');
@@ -1253,6 +1270,7 @@ function generatePermanencePdfTable() {
         }
         
         iterWeek = iterWeek.add(1, 'week'); // Passer à la semaine suivante
+        console.log("  Week rendered, currentY:", currentY);
     }
 
     // --- Deuxième passage pour ajouter la pagination et l'horodatage corrects ---
