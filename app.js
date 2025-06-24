@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.17"; // INCEMENTATION : Modale d'export stylisée + date de fin par défaut
+const APP_VERSION = "v20.18"; // INCEMENTATION : Correction Font Awesome et re-check export
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -192,7 +192,7 @@ function showToast(message, type = 'info', duration = 3000) {
 }
 
 // --- Fonctions de gestion des Modales ---
-function showModal(contentHtml, title, buttons = []) {
+function showModal(title, contentHtml, buttons = []) { // Inverser l'ordre de title et contentHtml pour correspondre à createAndShowModal
     let modal = document.getElementById('dynamicModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -255,7 +255,7 @@ function createAndShowModal(title, content, primaryButtonText, primaryButtonActi
     if (cancelButtonText && cancelButtonAction) {
         buttons.push({ text: cancelButtonText, onclick: cancelButtonAction, class: 'button-secondary' });
     }
-    showModal(content, title, buttons);
+    showModal(title, content, buttons);
 }
 
 // Fonctions pour créer des éléments de formulaire
@@ -265,7 +265,7 @@ function createInput(id, label, type = 'text', value = '', placeholder = '', req
     return `
         <div class="form-group">
             <label for="${id}">${label}${required ? ' *' : ''}</label>
-            <input type="${type}" id="${id}" value="${value}" placeholder="${placeholder}" ${requiredAttr} ${dataAttributes}>
+            <input type="${type}" id="${id}" value="${value}" placeholder="${placeholder}" ${requiredAttr} ${dataAttrs}>
         </div>
     `;
 }
@@ -329,7 +329,7 @@ async function savePeople() {
     try {
         await clearStore(STORE_PEOPLE);
         for (const person of people) {
-            await addItem(STORE_PEOPLE, person);
+            await putItem(STORE_PEOPLE, person); // Utiliser putItem pour gérer l'ajout et la mise à jour
         }
     } catch (error) {
         console.error("Erreur lors de la sauvegarde des personnes:", error);
@@ -544,7 +544,7 @@ async function saveCalendarEvents() {
     try {
         await clearStore(STORE_EVENTS);
         for (const event of allCalendarEvents) {
-            await addItem(STORE_EVENTS, event);
+            await putItem(STORE_EVENTS, event); // Utiliser putItem pour gérer l'ajout et la mise à jour
         }
     } catch (error) {
         console.error("Erreur lors de la sauvegarde des événements:", error);
@@ -647,7 +647,10 @@ function showAddPlanningEventModal(startStr = '', endStr = '') {
     const endOfYear = dayjs().endOf('year').format('YYYY-MM-DD');
 
     // MODIFIÉ : Assure que la date de fin est la même que la date de début par défaut
-    const defaultEndDate = startStr ? startStr : '';
+    // FullCalendar `select` event gives endStr as the day AFTER the selected range,
+    // so if only one day is selected, endStr is day + 1. We need to display the selected end day.
+    const defaultEndDate = endStr ? dayjs(endStr).subtract(1, 'day').format('YYYY-MM-DD') : startStr;
+
 
     const content = `
         ${createSelectInput('personSelect', 'Personne', personOptions, people[0].id, true)}
