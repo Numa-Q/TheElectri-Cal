@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.38"; // INCEMENTATION : Export PDF via window.print(), ajout 'permanence_backup', stats pour toutes les personnes
+const APP_VERSION = "v20.39"; // INCEMENTATION : Export PDF en mode tableau (Lun-Ven), toast pour PNG, correction régressions visuelles
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -155,7 +155,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', () => showExportOptionsModal('pdf'));
 
     const exportPngBtn = document.getElementById('exportPngBtn');
-    if (exportPngBtn) exportPngBtn.addEventListener('click', () => showExportOptionsModal('png')); // Garde l'option PNG pour l'instant, mais la fonction sera simplifiée
+    // MODIFIÉ : Affiche un toast pour le bouton PNG
+    if (exportPngBtn) exportPngBtn.addEventListener('click', () => showToast("Fonctionnalité à venir.", "info"));
 
     const exportJsonBtn = document.getElementById('exportJsonBtn');
     if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportDataToJson);
@@ -694,7 +695,7 @@ function showAddPlanningEventModal(startStr = '', endStr = '') {
                 { label: 'Mardi', value: '2' },
                 { label: 'Mercredi', value: '3' },
                 { label: 'Jeudi', value: '4' },
-                { label: 'Vendredi', value: '5' }
+                { label: 'Vendredi', 'value': '5' }
             ], [], 'addRecurrenceDay_')}
             ${createDatePicker('recurrenceEndDate', 'Fin de récurrence', endOfYear, true)}
         </div>
@@ -769,7 +770,7 @@ async function addPlanningEvent() {
         const recurrenceEndDateInput = document.getElementById('recurrenceEndDate');
         const recurrenceEndDate = recurrenceEndDateInput ? recurrenceEndDateInput.value : '';
 
-        const endRecurrenceDayjs = dayjs(recurrenceEndDate);
+        const endRecurrenceDayjs = dayjs(recururrenceEndDate);
         if (recurrenceDays.length === 0 || !recurrenceEndDate || !endRecurrenceDayjs.isValid()) {
             showToast('Pour le télétravail récurrent, veuillez sélectionner les jours et fournir une date de fin de récurrence valide.', 'error');
             return;
@@ -1033,7 +1034,7 @@ async function importDataFromJson() {
     }
 }
 
-// MODIFIÉ : Fonction pour afficher la modale des options d'export (simplifiée pour PDF)
+// MODIFIÉ : Fonction pour afficher la modale des options d'export (spécifique au nouveau PDF)
 function showExportOptionsModal(exportType) {
     if (people.length === 0) {
         showToast("Veuillez ajouter au moins une personne d'abord.", "error");
@@ -1044,93 +1045,166 @@ function showExportOptionsModal(exportType) {
         return;
     }
 
+    // Valeurs par défaut pour les dates (mois courant)
+    const defaultStartDate = dayjs().startOf('month').format('YYYY-MM-DD');
+    const defaultEndDate = dayjs().endOf('month').format('YYYY-MM-DD');
+
+
     const content = `
-        <div class="form-group">
-            <label>Options d'exportation PDF :</label>
-            <label style="display: block;">
-                <input type="checkbox" id="includeWhiteBackground" checked> Fond blanc pour l'impression
-            </label>
-            <p>Le calendrier s'adaptera sur deux mois pour l'impression PDF.</p>
-        </div>
+        <p>Génère un PDF listant les permanences par semaine sous forme de tableau.</p>
+        ${createDatePicker('pdfExportStartDate', 'Date de début de la période', defaultStartDate, true)}
+        ${createDatePicker('pdfExportEndDate', 'Date de fin de la période', defaultEndDate, true)}
     `;
 
     const buttons = [];
-    buttons.push({ text: 'Générer le PDF', onclick: `performPrintExport()`, class: 'button-primary' });
+    buttons.push({ text: 'Générer le PDF', onclick: `generatePermanencePdfTable()`, class: 'button-primary' });
     buttons.push({ text: 'Annuler', onclick: 'closeModal()', class: 'button-secondary' });
 
-    showModal('Options d\'exportation PDF', content, buttons); 
+    showModal('Exporter le planning des permanences (PDF)', content, buttons); 
 }
 
-// NOUVEAU : Fonction pour gérer l'exportation via window.print()
-async function performPrintExport() {
-    closeModal(); // Ferme la modale d'options d'export
+// NOUVEAU : Fonction pour générer le PDF du planning des permanences en tableau
+function generatePermanencePdfTable() {
+    closeModal(); // Ferme la modale
 
-    const originalEventsOption = calendar.getOption('events');
-    const originalView = calendar.view.type;
-    const originalDate = calendar.getDate();
-    const includeWhiteBackground = document.getElementById('includeWhiteBackground') ? document.getElementById('includeWhiteBackground').checked : true;
+    const startDateStr = document.getElementById('pdfExportStartDate').value;
+    const endDateStr = document.getElementById('pdfExportEndDate').value;
 
-    // Masquer les éléments non pertinents et afficher le toast
-    showToast("Préparation de l'exportation PDF. La boîte de dialogue d'impression va apparaître.", "info", 0);
-    document.body.classList.add('export-mode'); // Ajoute une classe pour les styles d'impression
-    if (includeWhiteBackground) {
-        document.body.classList.add('print-white-background');
-    }
+    const startDate = dayjs(startDateStr);
+    const endDate = dayjs(endDateStr);
 
-    // Filtrer pour n'exporter que les permanences (permanence et permanence_backup)
-    let filteredExportEvents = allCalendarEvents.filter(event => 
-        event.type === 'permanence' || event.type === 'permanence_backup'
-    );
-
-    if (filteredExportEvents.length === 0) {
-        showToast("Aucune permanence trouvée pour l'exportation.", "info");
-        // Restaurer l'état original immédiatement
-        document.body.classList.remove('export-mode', 'print-white-background');
-        calendar.setOption('events', originalEventsOption);
-        calendar.changeView(originalView);
-        calendar.gotoDate(originalDate);
-        hideToast();
+    if (!startDate.isValid() || !endDate.isValid() || startDate.isAfter(endDate)) {
+        showToast("Veuillez sélectionner une période de dates valide pour l'export PDF.", "error");
         return;
     }
 
-    calendar.setOption('events', filteredExportEvents);
-    calendar.changeView('dayGridMonth'); // S'assurer que le calendrier est en vue mensuelle
+    if (typeof jspdf === 'undefined') {
+        showToast("La bibliothèque jsPDF n'est pas chargée. L'export PDF est impossible.", "error", 5000);
+        console.error("jsPDF is not loaded. Make sure the script is included.");
+        return;
+    }
 
-    // Déterminer la date de début de l'exportation (début du mois actuel)
-    let startExportDate = dayjs(originalDate).startOf('month');
+    const doc = new jspdf.jsPDF('p', 'mm', 'a4');
+    doc.setFont('helvetica'); // Use a standard font
+    doc.setFontSize(10);
 
-    // Afficher le premier mois
-    calendar.gotoDate(startExportDate.toDate());
-    await new Promise(resolve => setTimeout(resolve, 500)); // Laisse le temps au calendrier de se rendre
+    const margin = 10; // mm
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const columnCount = 5; // Lundi à Vendredi
+    const colWidth = (pageWidth - 2 * margin) / columnCount;
+    const lineHeight = 7; // mm par ligne de texte (dates, permanences, backups)
+    const weekBlockHeight = 3 * lineHeight; // 3 lignes par semaine
+    const weekSpacing = 5; // mm d'espace entre les blocs de semaines
 
-    // Afficher le deuxième mois pour une seule impression multi-mois
-    // Simule le "next" button click pour forcer le rendu du mois suivant
-    calendar.next();
-    await new Promise(resolve => setTimeout(resolve, 500)); // Laisse le temps au calendrier de se rendre
+    let currentY = margin;
 
-    // Retourne au premier mois pour s'assurer que la vue est stable pour le print
-    calendar.prev(); // Revient au premier mois pour que window.print() capture la vue initiale
-    await new Promise(resolve => setTimeout(resolve, 500)); // Laisse le temps au calendrier de se rendre
+    // Fonction pour ajouter le titre de la page
+    const addPageHeader = (startD, endD) => {
+        doc.setFontSize(14);
+        doc.text(`Planning des Permanences : ${startD.format('DD/MM/YYYY')} - ${endD.format('DD/MM/YYYY')}`, pageWidth / 2, currentY, { align: 'center' });
+        doc.setFontSize(10);
+        currentY += 10; // Espace après le titre
+    };
 
-    // Ouvrir la boîte de dialogue d'impression
-    window.print();
+    addPageHeader(startDate, endDate);
+    currentY += 5; // Espace initial après le header
 
-    // Restaurer l'interface après un court délai pour permettre à l'utilisateur de fermer la boîte de dialogue d'impression
-    // On ne peut pas savoir quand l'impression est "terminée", donc un délai est la meilleure option
-    setTimeout(() => {
-        document.body.classList.remove('export-mode', 'print-white-background');
-        // Restaurer l'état original du calendrier
-        calendar.setOption('events', originalEventsOption);
-        calendar.changeView(originalView);
-        calendar.gotoDate(originalDate);
-        hideToast();
-        showToast("Exportation PDF terminée. Vérifiez votre dossier de téléchargement.", 'success', 5000);
-    }, 1000); // Délai avant de restaurer l'UI et le calendrier
+    // Agrégation des données par jour
+    const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: [pName], permanence_backup: [pName] } }
+    let tempDate = dayjs(startDate);
+    while (tempDate.isSameOrBefore(endDate, 'day')) {
+        dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), permanence_backup: new Set() };
+        tempDate = tempDate.add(1, 'day');
+    }
+
+    allCalendarEvents.forEach(event => {
+        if (event.type !== 'permanence' && event.type !== 'permanence_backup') {
+            return;
+        }
+
+        const person = people.find(p => p.id === event.personId);
+        if (!person) return; // Personne introuvable
+
+        const eventStartDate = dayjs(event.start);
+        const eventEndDate = dayjs(event.end).subtract(1, 'day'); // FullCalendar end date is exclusive
+
+        let day = dayjs.max(eventStartDate, startDate);
+        let loopEndDate = dayjs.min(eventEndDate, endDate);
+
+        while (day.isSameOrBefore(loopEndDate, 'day')) {
+            // Inclure seulement les jours de semaine (Lundi=1 à Vendredi=5)
+            if (day.weekday() >= 1 && day.weekday() <= 5) {
+                const dateKey = day.format('YYYY-MM-DD');
+                if (dailyPermanences[dateKey]) { // S'assurer que le jour est dans la période d'export
+                    if (event.type === 'permanence') {
+                        dailyPermanences[dateKey].permanence.add(person.name);
+                    } else if (event.type === 'permanence_backup') {
+                        dailyPermanences[dateKey].permanence_backup.add(person.name);
+                    }
+                }
+            }
+            day = day.add(1, 'day');
+        }
+    });
+
+    // Début du rendu par semaine
+    let currentWeekStart = dayjs(startDate).startOf('week').add(1, 'day'); // Commence au lundi de la première semaine
+    if (currentWeekStart.day() === 0) currentWeekStart = currentWeekStart.add(1, 'day'); // Si startOf('week') est Dimanche, passe au Lundi
+
+    // Ajuste currentWeekStart pour qu'il soit le lundi de la semaine contenant startDate, ou startDate si c'est un lundi.
+    currentWeekStart = dayjs(startDate).startOf('week', { weekStart: 1 }); // Force le début de semaine au Lundi
+
+    while (currentWeekStart.isSameOrBefore(endDate, 'week')) {
+        // Ajouter une nouvelle page si la semaine ne rentre pas
+        if (currentY + weekBlockHeight + weekSpacing > pageHeight - margin) {
+            doc.addPage();
+            currentY = margin;
+            addPageHeader(startDate, endDate); // Ré-ajouter le header sur la nouvelle page
+            currentY += 5; // Espace après le header de la nouvelle page
+        }
+
+        // --- Ligne des Dates ---
+        let tempX = margin;
+        doc.setFontSize(9); // Taille légèrement plus petite pour les dates
+        for (let i = 0; i < columnCount; i++) {
+            const dayDate = currentWeekStart.add(i, 'day');
+            doc.text(dayDate.format('ddd DD/MM'), tempX + colWidth / 2, currentY, { align: 'center', maxWidth: colWidth - 2 });
+            tempX += colWidth;
+        }
+        currentY += lineHeight;
+
+        // --- Ligne des Permanences ---
+        tempX = margin;
+        doc.setFontSize(10); // Retour à la taille normale
+        for (let i = 0; i < columnCount; i++) {
+            const dayDate = currentWeekStart.add(i, 'day');
+            const dateKey = dayDate.format('YYYY-MM-DD');
+            const permanences = Array.from(dailyPermanences[dateKey]?.permanence || []).join(', ');
+            doc.text(permanences, tempX + colWidth / 2, currentY, { align: 'center', maxWidth: colWidth - 2 });
+            tempX += colWidth;
+        }
+        currentY += lineHeight;
+
+        // --- Ligne des Permanences Backup ---
+        tempX = margin;
+        for (let i = 0; i < columnCount; i++) {
+            const dayDate = currentWeekStart.add(i, 'day');
+            const dateKey = dayDate.format('YYYY-MM-DD');
+            const backups = Array.from(dailyPermanences[dateKey]?.permanence_backup || []).join(', ');
+            doc.text(backups, tempX + colWidth / 2, currentY, { align: 'center', maxWidth: colWidth - 2 });
+            tempX += colWidth;
+        }
+        currentY += lineHeight;
+
+        currentY += weekSpacing; // Espacement après la semaine
+
+        currentWeekStart = currentWeekStart.add(1, 'week'); // Passer à la semaine suivante
+    }
+
+    doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}.pdf`);
+    showToast('Le PDF du planning des permanences a été généré !', 'success');
 }
-
-// Anciennes fonctions d'exportation qui seront supprimées ou rendues non utilisées
-// REMOVED: exportPlanningToPdfMultiMonth (utilisait html2canvas/jspdf)
-// REMOVED: exportPlanningToPngMultiMonth (utilisait html2canvas)
 
 
 // --- Nouvelles fonctions pour les statistiques (v20.19) ---
