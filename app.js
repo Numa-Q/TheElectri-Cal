@@ -8,11 +8,12 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.37"; // INCEMENTATION : Correction Uncaught SyntaxError, amélioration gestion export PDF/PNG, feedback utilisateur export
+const APP_VERSION = "v20.38"; // INCEMENTATION : Export PDF via window.print(), ajout 'permanence_backup', stats pour toutes les personnes
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
     'permanence': '#28a745', // Vert
+    'permanence_backup': '#007bff', // Bleu (pour permanence backup)
     'telework_punctual': '#007bff', // Bleu (pour télétravail ponctuel)
     'telework_recurrent': '#007bff', // Bleu (pour télétravail récurrent)
     'leave': '#808080' // Gris
@@ -154,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', () => showExportOptionsModal('pdf'));
 
     const exportPngBtn = document.getElementById('exportPngBtn');
-    if (exportPngBtn) exportPngBtn.addEventListener('click', () => showExportOptionsModal('png'));
+    if (exportPngBtn) exportPngBtn.addEventListener('click', () => showExportOptionsModal('png')); // Garde l'option PNG pour l'instant, mais la fonction sera simplifiée
 
     const exportJsonBtn = document.getElementById('exportJsonBtn');
     if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportDataToJson);
@@ -354,7 +355,7 @@ function createDatePicker(id, label, value = '', required = false, dataAttrs = {
 }
 
 
-// --- Gestion des personnes (maintenant avec IndexedDB) ---
+// --- Fonctions de gestion des personnes (maintenant avec IndexedDB) ---
 async function savePeople() {
     try {
         await clearStore(STORE_PEOPLE);
@@ -651,6 +652,7 @@ function initFullCalendar() {
 function getEventTypeDisplayName(type) {
     switch (type) {
         case 'permanence': return 'Permanence';
+        case 'permanence_backup': return 'Permanence (Backup)';
         case 'telework_punctual': return 'Télétravail (ponctuel)';
         case 'telework_recurrent': return 'Télétravail (récurrent)';
         case 'leave': return 'Congé';
@@ -667,6 +669,7 @@ function showAddPlanningEventModal(startStr = '', endStr = '') {
     const personOptions = people.map(p => ({ value: p.id, label: p.name }));
     const eventTypeOptions = [
         { value: 'permanence', label: 'Permanence' },
+        { value: 'permanence_backup', label: 'Permanence (Backup)' }, // NOUVEAU
         { value: 'telework_punctual', label: 'Télétravail (ponctuel)' },
         { value: 'telework_recurrent', label: 'Télétravail (récurrent)' },
         { value: 'leave', label: 'Congé' }
@@ -804,6 +807,7 @@ function showEditPlanningEventModal(eventId) {
     const personOptions = people.map(p => ({ value: p.id, label: p.name }));
     const eventTypeOptions = [
         { value: 'permanence', label: 'Permanence' },
+        { value: 'permanence_backup', label: 'Permanence (Backup)' }, // NOUVEAU
         { value: 'telework_punctual', label: 'Télétravail (ponctuel)' },
         { value: 'telework_recurrent', label: 'Télétravail (récurrent)' },
         { value: 'leave', label: 'Congé' }
@@ -1029,7 +1033,7 @@ async function importDataFromJson() {
     }
 }
 
-// NOUVEAU : Fonction pour afficher la modale des options d'export
+// MODIFIÉ : Fonction pour afficher la modale des options d'export (simplifiée pour PDF)
 function showExportOptionsModal(exportType) {
     if (people.length === 0) {
         showToast("Veuillez ajouter au moins une personne d'abord.", "error");
@@ -1040,191 +1044,94 @@ function showExportOptionsModal(exportType) {
         return;
     }
 
-    // MODIFIÉ : Options d'exportation simplifiées
     const content = `
         <div class="form-group">
-            <label>Type d'export :</label>
-            <p>Exporter toutes les permanences</p>
-        </div>
-
-        <div class="form-group">
-            <label>Options d'export :</label>
+            <label>Options d'exportation PDF :</label>
             <label style="display: block;">
-                <input type="checkbox" id="includeWhiteBackground" checked> Inclure le fond blanc
+                <input type="checkbox" id="includeWhiteBackground" checked> Fond blanc pour l'impression
             </label>
+            <p>Le calendrier s'adaptera sur deux mois pour l'impression PDF.</p>
         </div>
     `;
 
     const buttons = [];
-    buttons.push({ text: 'Exporter', onclick: `prepareAndPerformExport("${exportType}")`, class: 'button-primary' });
+    buttons.push({ text: 'Générer le PDF', onclick: `performPrintExport()`, class: 'button-primary' });
     buttons.push({ text: 'Annuler', onclick: 'closeModal()', class: 'button-secondary' });
 
-    showModal('Options d\'exportation', content, buttons); 
+    showModal('Options d\'exportation PDF', content, buttons); 
 }
 
-// NOUVEAU : Prépare et déclenche l'exportation
-async function prepareAndPerformExport(type) {
-    const includeWhiteBackground = document.getElementById('includeWhiteBackground').checked;
-
-    closeModal();
+// NOUVEAU : Fonction pour gérer l'exportation via window.print()
+async function performPrintExport() {
+    closeModal(); // Ferme la modale d'options d'export
 
     const originalEventsOption = calendar.getOption('events');
     const originalView = calendar.view.type;
     const originalDate = calendar.getDate();
+    const includeWhiteBackground = document.getElementById('includeWhiteBackground') ? document.getElementById('includeWhiteBackground').checked : true;
 
-    // Filtre pour n'exporter que les permanences
-    let filteredExportEvents = allCalendarEvents.filter(event => event.type === 'permanence');
+    // Masquer les éléments non pertinents et afficher le toast
+    showToast("Préparation de l'exportation PDF. La boîte de dialogue d'impression va apparaître.", "info", 0);
+    document.body.classList.add('export-mode'); // Ajoute une classe pour les styles d'impression
+    if (includeWhiteBackground) {
+        document.body.classList.add('print-white-background');
+    }
+
+    // Filtrer pour n'exporter que les permanences (permanence et permanence_backup)
+    let filteredExportEvents = allCalendarEvents.filter(event => 
+        event.type === 'permanence' || event.type === 'permanence_backup'
+    );
 
     if (filteredExportEvents.length === 0) {
         showToast("Aucune permanence trouvée pour l'exportation.", "info");
+        // Restaurer l'état original immédiatement
+        document.body.classList.remove('export-mode', 'print-white-background');
+        calendar.setOption('events', originalEventsOption);
+        calendar.changeView(originalView);
+        calendar.gotoDate(originalDate);
+        hideToast();
+        return;
+    }
+
+    calendar.setOption('events', filteredExportEvents);
+    calendar.changeView('dayGridMonth'); // S'assurer que le calendrier est en vue mensuelle
+
+    // Déterminer la date de début de l'exportation (début du mois actuel)
+    let startExportDate = dayjs(originalDate).startOf('month');
+
+    // Afficher le premier mois
+    calendar.gotoDate(startExportDate.toDate());
+    await new Promise(resolve => setTimeout(resolve, 500)); // Laisse le temps au calendrier de se rendre
+
+    // Afficher le deuxième mois pour une seule impression multi-mois
+    // Simule le "next" button click pour forcer le rendu du mois suivant
+    calendar.next();
+    await new Promise(resolve => setTimeout(resolve, 500)); // Laisse le temps au calendrier de se rendre
+
+    // Retourne au premier mois pour s'assurer que la vue est stable pour le print
+    calendar.prev(); // Revient au premier mois pour que window.print() capture la vue initiale
+    await new Promise(resolve => setTimeout(resolve, 500)); // Laisse le temps au calendrier de se rendre
+
+    // Ouvrir la boîte de dialogue d'impression
+    window.print();
+
+    // Restaurer l'interface après un court délai pour permettre à l'utilisateur de fermer la boîte de dialogue d'impression
+    // On ne peut pas savoir quand l'impression est "terminée", donc un délai est la meilleure option
+    setTimeout(() => {
+        document.body.classList.remove('export-mode', 'print-white-background');
         // Restaurer l'état original du calendrier
         calendar.setOption('events', originalEventsOption);
         calendar.changeView(originalView);
         calendar.gotoDate(originalDate);
-        return;
-    }
-    
-    showToast(`Préparation de l'exportation ${type.toUpperCase()} en cours...`, 'info', 0); // Durée 0 pour un toast persistant
-
-    calendar.setOption('events', filteredExportEvents);
-    
-    try {
-        if (type === 'pdf') {
-            await exportPlanningToPdfMultiMonth(originalView, originalDate, includeWhiteBackground);
-        } else if (type === 'png') {
-            await exportPlanningToPngMultiMonth(originalView, originalDate, includeWhiteBackground);
-        }
-        showToast("Exportation réussie !", 'success'); // Succès
-    } catch (error) {
-        console.error(`Erreur lors de l'exportation ${type}:`, error);
-        showToast(`Erreur lors de l'exportation ${type}. Veuillez vérifier la console pour plus de détails.`, 'error', 8000);
-    } finally {
-        hideToast(); // Masque le toast de progression
-        // Restaurer l'état original du calendrier, même en cas d'erreur
-        calendar.setOption('events', originalEventsOption);
-        calendar.changeView(originalView);
-        calendar.gotoDate(originalDate);
-    }
+        hideToast();
+        showToast("Exportation PDF terminée. Vérifiez votre dossier de téléchargement.", 'success', 5000);
+    }, 1000); // Délai avant de restaurer l'UI et le calendrier
 }
 
+// Anciennes fonctions d'exportation qui seront supprimées ou rendues non utilisées
+// REMOVED: exportPlanningToPdfMultiMonth (utilisait html2canvas/jspdf)
+// REMOVED: exportPlanningToPngMultiMonth (utilisait html2canvas)
 
-async function exportPlanningToPdfMultiMonth(originalView, originalDate, includeWhiteBackground) {
-    const calendarEl = document.getElementById('calendar');
-    if (!calendarEl || !calendar) {
-        throw new Error("Calendrier non trouvé.");
-    }
-
-    try {
-        calendar.changeView('dayGridMonth');
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Augmentation du délai à 1 seconde
-
-        const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
-        const pdfPageWidthMm = pdf.internal.pageSize.getWidth();
-        const pdfPageHeightMm = pdf.internal.pageSize.getHeight();
-        const margin = 10;
-        const availableWidth = pdfPageWidthMm - 2 * margin;
-        const availableHeight = pdfPageHeightMm - 2 * margin;
-
-        let currentMonth = dayjs(originalDate).startOf('month');
-        let currentPage = 1;
-
-        const numberOfMonthsToExport = 2; // Exportation sur 2 mois
-
-        for (let i = 0; i < numberOfMonthsToExport; i++) {
-            if (currentPage > 1) {
-                pdf.addPage();
-            }
-            calendar.gotoDate(currentMonth.toDate());
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre à nouveau le rendu
-
-            const canvas = await html2canvas(calendarEl, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: includeWhiteBackground ? '#FFFFFF' : null 
-            });
-
-            const imgData = canvas.toDataURL('image/png');
-            const imgWidthPx = canvas.width;
-            const imgHeightPx = canvas.height;
-
-            // Calculer les dimensions en mm pour qu'elles s'adaptent à la page PDF
-            const imgWidthMm = imgWidthPx * 25.4 / 96; 
-            const imgHeightMm = imgHeightPx * 25.4 / 96;
-
-            let finalWidthMm, finalHeightMm;
-            const aspectRatio = imgWidthMm / imgHeightMm;
-
-            if (imgWidthMm > availableWidth || imgHeightMm > availableHeight) {
-                if (aspectRatio > availableWidth / availableHeight) {
-                    finalWidthMm = availableWidth;
-                    finalHeightMm = availableWidth / aspectRatio;
-                } else {
-                    finalHeightMm = availableHeight;
-                    finalWidthMm = availableHeight * aspectRatio;
-                }
-            } else {
-                finalWidthMm = imgWidthMm;
-                finalHeightMm = imgHeightMm;
-            }
-
-            const x = (pdfPageWidthMm - finalWidthMm) / 2;
-            const y = (pdfPageHeightMm - finalHeightMm) / 2;
-
-            pdf.addImage(imgData, 'PNG', x, y, finalWidthMm, finalHeightMm);
-
-            currentMonth = currentMonth.add(1, 'month');
-            currentPage++;
-        }
-
-        pdf.save(`planning_electri-cal_multi-mois_${dayjs().format('YYYY-MM-DD_HHmmss')}.pdf`);
-
-    } catch (error) {
-        console.error('Erreur détaillée lors de l\'exportation PDF multi-mois :', error);
-        throw error; // Propage l'erreur pour qu'elle soit gérée par prepareAndPerformExport
-    }
-}
-
-async function exportPlanningToPngMultiMonth(originalView, originalDate, includeWhiteBackground) {
-    const calendarEl = document.getElementById('calendar');
-    if (!calendarEl || !calendar) {
-        throw new Error("Calendrier non trouvé.");
-    }
-
-    try {
-        calendar.changeView('dayGridMonth');
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Augmentation du délai à 1 seconde
-
-        let currentMonth = dayjs(originalDate).startOf('month');
-        const numberOfMonthsToExport = 2; // Exportation sur 2 mois
-
-        for (let i = 0; i < numberOfMonthsToExport; i++) {
-            calendar.gotoDate(currentMonth.toDate());
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Attendre à nouveau le rendu
-
-            const canvas = await html2canvas(calendarEl, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: includeWhiteBackground ? '#FFFFFF' : null 
-            });
-
-            const imgUrl = canvas.toDataURL('image/png');
-            const a = document.createElement('a');
-            a.href = imgUrl;
-            a.download = `planning_electri-cal_mois-${currentMonth.format('YYYY-MM')}_${dayjs().format('HHmmss')}.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-
-            currentMonth = currentMonth.add(1, 'month');
-        }
-
-    } catch (error) {
-        console.error('Erreur détaillée lors de l\'exportation PNG multi-mois :', error);
-        throw error; // Propage l'erreur pour qu'elle soit gérée par prepareAndPerformExport
-    }
-}
 
 // --- Nouvelles fonctions pour les statistiques (v20.19) ---
 function showStatsModal() {
@@ -1233,7 +1140,7 @@ function showStatsModal() {
     const defaultEndDate = dayjs().endOf('year').format('YYYY-MM-DD');
 
     const content = `
-        <p>Calcule le nombre de jours de permanence par personne sur la période sélectionnée.</p>
+        <p>Calcule le nombre de jours de permanence par personne sur la période sélectionnée. Inclut les permanences et permanences (backup).</p>
         ${createDatePicker('statsStartDate', 'Date de début', defaultStartDate, true)}
         ${createDatePicker('statsEndDate', 'Date de fin', defaultEndDate, true)}
         <div class="form-group button-group">
@@ -1262,6 +1169,7 @@ function generateAndDisplayStats() {
         return;
     }
 
+    // MODIFIÉ : Initialiser les stats pour TOUTES les personnes
     const stats = {};
     people.forEach(person => {
         stats[person.id] = {
@@ -1271,8 +1179,8 @@ function generateAndDisplayStats() {
     });
 
     allCalendarEvents.forEach(event => {
-        // Seules les permanences sont prises en compte
-        if (event.type !== 'permanence') {
+        // MODIFIÉ : Inclure 'permanence_backup' dans le calcul
+        if (event.type !== 'permanence' && event.type !== 'permanence_backup') {
             return;
         }
 
@@ -1314,27 +1222,18 @@ function displayStatsTable(stats) {
             <tbody>
     `;
 
-    let hasData = false;
+    // MODIFIÉ : Afficher toutes les personnes, même si permanenceDays est à 0
     // Trier les personnes par nom avant d'afficher
     const sortedPeopleStats = Object.values(stats).sort((a, b) => a.name.localeCompare(b.name));
 
     sortedPeopleStats.forEach(stat => {
-        // Afficher seulement si la personne a des jours de permanence
-        if (stat.permanenceDays > 0) {
-            hasData = true;
-            tableHtml += `
-                <tr>
-                    <td>${stat.name}</td>
-                    <td>${stat.permanenceDays}</td>
-                </tr>
-            `;
-        }
+        tableHtml += `
+            <tr>
+                <td>${stat.name}</td>
+                <td>${stat.permanenceDays}</td>
+            </tr>
+        `;
     });
-
-    if (!hasData) {
-        statsResultsDiv.innerHTML = '<p class="info-message">Aucune donnée de permanence pour la période sélectionnée.</p>';
-        return;
-    }
 
     tableHtml += `
             </tbody>
