@@ -4,8 +4,8 @@ styles.css -> to be deleted.
 
 ## EVO
 ### Export CSV
-Ajouter la période sélectionnée en en tête de fichier
-ajouter la date et l'heure d'exporta dans le nom de fichier (?)
+~~Ajouter la période sélectionnée en en tête de fichier.~~ v20.48.5
+Ajouter la date et l'heure d'export dans le nom de fichier (?)
 
 ### Export pdf 
 ~~ajouter la date et l'heure d'export dans le nom de fichier~~ V20.48.4 
