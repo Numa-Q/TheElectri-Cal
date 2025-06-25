@@ -9,7 +9,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
 // MODIFIÉ : Version de l'application mise à jour pour inclure les dernières corrections et fonctionnalités
-const APP_VERSION = "v20.48.10.2"; 
+const APP_VERSION = "v20.50.0"; 
 
 // MODIFIÉ : Informations sur les versions des librairies pour la vérification manuelle
 const LIBRARIES_INFO = [
