@@ -22,359 +22,322 @@
     --toast-error-bg: #dc3545;
     --toast-text-color: white;
     --footer-bg: rgba(255, 255, 255, 0.2);
-    --fullcalendar-header-bg: #f2f2f2;
-    --fullcalendar-day-bg: #ffffff;
-    --fullcalendar-day-other-bg: #fafafa;
-    --fullcalendar-today-bg: #fffbe6; /* Jaune très pâle */
+    --input-bg: #f5f5f5;
+    --input-border: #ccc;
+    --input-focus-border: #888;
+    --fullcalendar-border: #e0e0e0; /* Couleur des bordures pour FullCalendar */
+    --fullcalendar-bg: #ffffff; /* Fond des jours pour FullCalendar */
+    --fullcalendar-text: #333; /* Texte des jours pour FullCalendar */
+    --fullcalendar-header-bg: #f0f0f0; /* Fond de l'en-tête du calendrier */
 }
 
 /* Variables CSS pour les couleurs du thème sombre */
 body.dark-mode {
-    --bg-gradient-start: #23272a; /* Bleu très foncé pour un fond sombre */
-    --bg-gradient-end: #1a1e20;   /* Encore plus foncé */
-    --main-bg-color: rgba(0, 0, 0, 0.4); /* Fond glassmorphism sombre */
+    --bg-gradient-start: #2c3e50; /* Bleu foncé */
+    --bg-gradient-end: #34495e;   /* Gris-bleu foncé */
+    --main-bg-color: rgba(0, 0, 0, 0.4);
     --border-color: rgba(255, 255, 255, 0.1);
-    --text-color: #e0e0e0; /* Texte clair */
-    --header-bg: #1e2124; /* Très foncé pour le header */
-    --button-bg: #5a6a7c; /* Bleu-gris discret */
-    --button-hover-bg: #4a5766;
-    --sidebar-text-color: #c0c0c0;
+    --text-color: #f5f5f5;
+    --header-bg: #1a252f;
+    --button-bg: #4a69bd; /* Un bleu plus profond */
+    --button-hover-bg: #3a57a0;
+    --sidebar-text-color: #ddd;
     --modal-bg: rgba(0, 0, 0, 0.8);
-    /* Les toasts gardent des couleurs distinctes */
-    --fullcalendar-header-bg: #36393f;
-    --fullcalendar-day-bg: #2f3136;
-    --fullcalendar-day-other-bg: #282b30;
-    --fullcalendar-today-bg: #3e3e4f; /* Bleu-gris plus sombre */
+    --toast-info-bg: #117a8b;
+    --toast-success-bg: #1e7e34;
+    --toast-error-bg: #bd2130;
+    --toast-text-color: white;
+    --footer-bg: rgba(0, 0, 0, 0.2);
+    --input-bg: #333;
+    --input-border: #555;
+    --input-focus-border: #888;
+    --fullcalendar-border: #555;
+    --fullcalendar-bg: #333;
+    --fullcalendar-text: #f5f5f5;
+    --fullcalendar-header-bg: #2a2a2a;
 }
 
-
-/* Styles de base du corps de la page */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 0;
-    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+    background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
     color: var(--text-color);
-    min-height: 100vh;
+    min-height: 100vh; /* S'assure que le dégradé couvre toute la hauteur */
     display: flex;
-    flex-direction: column;
-    transition: background-color 0.3s ease, color 0.3s ease; /* Transition pour le changement de thème */
-    line-height: 1.6;
+    flex-direction: column; /* Permet au footer de rester en bas */
 }
 
-/* Conteneur principal */
-#app-container {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
-/* En-tête */
-.header {
-    background-color: var(--header-bg);
-    color: white;
-    padding: 15px 25px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    flex-wrap: wrap; /* Permet aux éléments de passer à la ligne */
-    gap: 10px; /* Espace entre les éléments de l'en-tête */
-}
-
-.header h1 {
-    margin: 0;
-    font-size: 1.8em;
-    font-weight: 600;
-}
-
-.header .app-info {
-    font-size: 0.85em;
-    opacity: 0.9;
-    margin-left: 20px;
-    white-space: nowrap; /* Empêche le retour à la ligne */
-}
-
-.header .action-buttons {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap; /* Permet aux boutons de passer à la ligne */
-    margin-left: auto; /* Aligne les boutons à droite */
-}
-
-/* Contenu principal (sidebar + calendrier) */
+/* Styles pour le conteneur principal */
 main {
-    flex-grow: 1; /* Permet au contenu principal de prendre l'espace disponible */
     display: flex;
+    flex: 1; /* Permet au main de prendre l'espace restant */
     padding: 20px;
     gap: 20px;
-    max-width: 1500px; /* Largeur maximale pour le contenu */
-    width: 100%;
-    margin: 20px auto; /* Centre le contenu */
+    max-width: 1500px; /* AUGMENTÉ : pour donner plus d'espace au calendrier */
+    width: calc(100% - 40px); /* Prend 100% de la largeur moins le padding total */
+    margin: 20px auto; /* Centre le contenu principal */
+    background: var(--main-bg-color);
+    border-radius: 15px;
+    backdrop-filter: blur(10px); /* Effet glassmorphism */
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
 }
 
-/* Sidebar */
 .sidebar {
-    flex: 1;
-    min-width: 280px;
-    max-width: 350px;
-    background-color: var(--main-bg-color);
-    backdrop-filter: blur(10px); /* Effet de flou glassmorphism */
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 25px;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    flex: 0 0 280px; /* Taille fixe pour la sidebar */
+    min-width: 280px; /* S'assure qu'elle ne rétrécit pas trop */
+    background: var(--main-bg-color); /* Utilise la même couleur de fond pour un look unifié */
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    color: var(--sidebar-text-color);
+    gap: 15px;
+    border: 1px solid var(--border-color);
 }
 
 .sidebar h2 {
-    color: var(--header-bg);
+    color: var(--text-color);
     margin-top: 0;
-    font-size: 1.6em;
-    border-bottom: 2px solid var(--border-color);
-    padding-bottom: 12px;
-    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.4em;
 }
 
-.person-list-container {
-    flex-grow: 1;
-    overflow-y: auto; /* Rend la liste des personnes scrollable si elle dépasse */
-    max-height: calc(100vh - 250px); /* Ajuste la hauteur max de la liste */
-    padding-right: 8px; /* Pour éviter que la scrollbar ne cache le contenu */
-}
-
-/* Scrollbar personnalisée */
-.person-list-container::-webkit-scrollbar,
-.modal-content::-webkit-scrollbar,
-.stats-table-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.person-list-container::-webkit-scrollbar-track,
-.modal-content::-webkit-scrollbar-track,
-.stats-table-container::-webkit-scrollbar-track {
-    background: var(--border-color); /* Couleur de fond de la piste */
-    border-radius: 10px;
-}
-
-.person-list-container::-webkit-scrollbar-thumb,
-.modal-content::-webkit-scrollbar-thumb,
-.stats-table-container::-webkit-scrollbar-thumb {
-    background: var(--button-bg); /* Couleur du "pouce" de la scrollbar */
-    border-radius: 10px;
-}
-
-.person-list-container::-webkit-scrollbar-thumb:hover,
-.modal-content::-webkit-scrollbar-thumb:hover,
-.stats-table-container::-webkit-scrollbar-thumb:hover {
-    background: var(--button-hover-bg);
-}
-
-
-#peopleList {
+.sidebar ul {
     list-style: none;
     padding: 0;
     margin: 0;
+    flex-grow: 1; /* Permet à la liste de prendre l'espace */
+    overflow-y: auto; /* Ajoute une barre de défilement si la liste est longue */
 }
 
-#peopleList li {
+.sidebar li {
+    /* MODIFIED: Increased opacity for better visibility */
+    background: rgba(255, 255, 255, 0.15); 
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    border-radius: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border-color);
+    /* MODIFIED: Increased border opacity for better definition */
+    border: 1px solid rgba(255, 255, 255, 0.3); 
     transition: background-color 0.2s ease;
-}
-
-#peopleList li:last-child {
-    border-bottom: none;
-}
-
-#peopleList li:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
-}
-
-.dark-mode #peopleList li:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
-#peopleList li span {
-    flex-grow: 1;
-    font-weight: 500;
-}
-
-.person-actions {
-    display: flex;
-    gap: 5px;
-}
-
-.person-actions button {
-    background: none;
-    border: none;
     color: var(--sidebar-text-color);
-    cursor: pointer;
-    font-size: 1.1em;
-    padding: 8px;
-    border-radius: 6px;
-    transition: color 0.2s ease, background-color 0.2s ease;
+    min-height: 45px; /* Assure une hauteur minimale pour les boutons */
 }
 
-.person-actions button:hover {
-    color: var(--button-bg);
+.dark-mode .sidebar li {
+    /* MODIFIED: Increased opacity for better visibility in dark mode */
+    background: rgba(0, 0, 0, 0.15);
+    /* MODIFIED: Increased border opacity for better definition in dark mode */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar li:hover {
     background-color: rgba(255, 255, 255, 0.2);
 }
 
-.dark-mode .person-actions button:hover {
+.dark-mode .sidebar li:hover {
     background-color: rgba(0, 0, 0, 0.2);
 }
 
 .person-hidden {
     opacity: 0.6;
     font-style: italic;
-    background-color: rgba(255, 255, 255, 0.1);
 }
 
-.dark-mode .person-hidden {
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
-.person-hidden .toggle-visibility-btn {
-    color: var(--sidebar-text-color);
-    opacity: 0.7;
-}
-
-
-/* Section Calendrier */
-.calendar-section {
-    flex: 3;
-    background-color: var(--main-bg-color);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 25px;
-    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-    min-height: 600px;
-}
-
-/* Boutons généraux */
-.button,
-button {
-    background-color: var(--button-bg);
-    color: var(--toast-text-color);
-    padding: 10px 20px;
-    border: none;
-    border-radius: 8px;
+/* Fix for sidebar action buttons: use --button-bg color */
+.person-actions button {
+    background-color: var(--button-bg); /* Use the main button background color */
+    border: 1px solid var(--button-bg); /* Match the border color */
+    color: white; /* Ensure icon is white */
     cursor: pointer;
-    font-size: 1em;
-    font-weight: 500;
-    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
-    text-decoration: none;
-    display: inline-flex;
+    margin-left: 5px;
+    font-size: 0.9em;
+    padding: 5px;
+    border-radius: 5px;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+    display: inline-flex; /* Ensure flex behavior for centering icon */
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    white-space: nowrap; /* Empêche le texte du bouton de se casser sur plusieurs lignes */
 }
 
-.button:hover,
-button:hover {
+.person-actions button:hover {
     background-color: var(--button-hover-bg);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border-color: var(--button-hover-bg);
+    transform: translateY(-1px); /* Slight lift effect on hover */
 }
 
-.button:active,
-button:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.button-primary {
-    background-color: var(--toast-success-bg); /* Vert */
-}
-
-.button-primary:hover {
-    background-color: #218838;
-}
-
-.button-secondary {
-    background-color: #6c757d; /* Gris */
-}
-
-.button-secondary:hover {
-    background-color: #5a6268;
-}
-
-.button-danger {
-    background-color: var(--toast-error-bg); /* Rouge */
-}
-
-.button-danger:hover {
-    background-color: #c82333;
-}
-
-.button-info {
-    background-color: var(--toast-info-bg); /* Bleu clair */
-}
-
-.button-info:hover {
-    background-color: #117a8b;
+/* Ensure the icon itself inherits color */
+.person-actions button i {
+    color: inherit; /* Ensure icon color matches button text color (white) */
 }
 
 
-.button-group {
+.main-content {
+    flex: 1; /* Le contenu principal prend l'espace restant */
+    background: var(--main-bg-color);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-color);
+    display: flex; /* Utilise flexbox pour le contenu interne */
+    flex-direction: column;
+}
+
+.main-content h2 {
+    color: var(--text-color);
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.4em;
+}
+
+/* Styles pour FullCalendar */
+#calendar {
+    flex-grow: 1; /* Permet au calendrier de prendre tout l'espace disponible */
+    padding-top: 15px;
+    /* FullCalendar overrides */
+    --fc-border-color: var(--fullcalendar-border);
+    --fc-neutral-bg-color: var(--fullcalendar-bg);
+    --fc-daygrid-event-dot-width: 8px; /* Ajuste la taille du point d'événement */
+    color: var(--fullcalendar-text); /* Couleur du texte par défaut */
+}
+
+.fc-button {
+    background-color: var(--button-bg) !important;
+    border-color: var(--button-bg) !important;
+    color: white !important;
+    text-transform: capitalize !important; /* Pour que les noms de vue soient en minuscules */
+}
+
+.fc-button:hover {
+    background-color: var(--button-hover-bg) !important;
+    border-color: var(--button-hover-bg) !important;
+}
+
+.fc-daygrid-day-number {
+    color: var(--fullcalendar-text);
+}
+
+.fc-col-header-cell {
+    background-color: var(--fullcalendar-header-bg);
+    color: var(--fullcalendar-text);
+}
+
+.fc-event {
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: normal; /* Permet au texte de passer à la ligne */
+    overflow: hidden; /* Cache le texte qui dépasse */
+    text-overflow: ellipsis; /* Ajoute des points de suspension si le texte est tronqué */
+}
+
+/* Header */
+header {
+    background-color: var(--header-bg);
+    color: white;
+    padding: 15px 20px;
+    text-align: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-top: 15px;
+    justify-content: space-between;
+    align-items: center;
 }
 
-.ml-2 {
-    margin-left: 10px;
+header h1 {
+    margin: 0;
+    font-size: 1.8em;
+    flex-grow: 1;
 }
 
-/* Modales */
+/* Global button styles for sidebar action buttons and header theme button */
+#addPersonBtn,
+#addPlanningEventBtn,
+#exportPdfBtn,
+#exportPngBtn,
+#exportJsonBtn,
+#importJsonBtn,
+#showStatsBtn,
+#themeToggleButton {
+    background-color: var(--button-bg);
+    color: white;
+    border: none; /* No border for these specific buttons */
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    /* Ensure consistent spacing and appearance for sidebar buttons */
+    display: flex; /* Use flex to align content if needed */
+    align-items: center;
+    justify-content: center;
+    gap: 5px; /* Space between icon and text if present */
+}
+
+#addPersonBtn:hover,
+#addPlanningEventBtn:hover,
+#exportPdfBtn:hover,
+#exportPngBtn:hover,
+#exportJsonBtn:hover,
+#importJsonBtn:hover,
+#showStatsBtn:hover,
+#themeToggleButton:hover {
+    background-color: var(--button-hover-bg);
+    transform: translateY(-1px);
+}
+
+
+/* Footer */
+footer {
+    background-color: var(--footer-bg);
+    color: var(--text-color);
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 0.8em;
+    margin-top: 20px; /* Ajoute un espace entre le contenu principal et le footer */
+}
+
+
+/* Modal styles */
 .modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
     left: 0;
     top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.6);
-    justify-content: center;
-    align-items: center;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    justify-content: center; /* Center content horizontally */
+    align-items: center; /* Center content vertically */
     opacity: 0;
-    transition: opacity 0.3s ease-out;
+    transition: opacity 0.3s ease-in-out;
 }
 
 .modal.show {
     opacity: 1;
-    display: flex; /* Garder flex pour le centrage */
 }
 
 .modal-content {
     background-color: var(--modal-bg);
-    backdrop-filter: blur(15px);
-    border: 1px solid var(--border-color);
     margin: auto;
-    padding: 30px;
-    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
     width: 90%;
-    max-width: 650px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    display: flex;
-    flex-direction: column;
-    max-height: 90vh;
-    overflow-y: auto;
-    transform: translateY(-20px); /* Animation d'entrée */
-    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+    max-width: 600px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    position: relative;
+    transform: translateY(-20px);
+    opacity: 0;
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
 
 .modal.show .modal-content {
@@ -382,24 +345,24 @@ button:active {
     opacity: 1;
 }
 
+
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border-color);
-    padding-bottom: 15px;
+    padding-bottom: 10px;
     margin-bottom: 20px;
 }
 
 .modal-header h2 {
     margin: 0;
-    color: var(--header-bg);
-    font-size: 1.8em;
+    color: var(--text-color);
 }
 
 .close-button {
     color: var(--text-color);
-    font-size: 32px;
+    font-size: 28px;
     font-weight: bold;
     cursor: pointer;
     transition: color 0.2s ease;
@@ -407,39 +370,34 @@ button:active {
 
 .close-button:hover,
 .close-button:focus {
-    color: var(--button-bg);
+    color: var(--button-hover-bg);
     text-decoration: none;
 }
 
 .modal-body {
-    flex-grow: 1;
     margin-bottom: 20px;
-    font-size: 1.05em;
-}
-
-.modal-body p {
-    margin-bottom: 15px;
+    max-height: 70vh; /* Limite la hauteur du corps de la modale */
+    overflow-y: auto; /* Ajoute un défilement si le contenu dépasse */
 }
 
 .modal-footer {
     border-top: 1px solid var(--border-color);
-    padding-top: 20px;
+    padding-top: 15px;
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
-    flex-wrap: wrap;
+    gap: 10px;
 }
 
-/* Éléments de formulaire */
+/* Form Group */
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
 }
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: var(--sidebar-text-color);
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--text-color);
 }
 
 .form-group input[type="text"],
@@ -447,238 +405,161 @@ button:active {
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid var(--input-border);
+    border-radius: 5px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
     font-size: 1em;
-    background-color: rgba(255, 255, 255, 0.6); /* Fond semi-transparent */
-    color: var(--text-color);
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
-    -webkit-appearance: none; /* Supprime le style par défaut sur iOS/Safari */
-    -moz-appearance: none;
-    appearance: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.dark-mode .form-group input[type="text"],
-.dark-mode .form-group input[type="date"],
-.dark-mode .form-group select,
-.dark-mode .form-group textarea {
-    background-color: rgba(0, 0, 0, 0.6);
-    color: var(--text-color);
-}
-
-
-.form-group input:focus,
+.form-group input[type="text"]:focus,
+.form-group input[type="date"]:focus,
 .form-group select:focus,
 .form-group textarea:focus {
-    border-color: var(--button-bg);
-    box-shadow: 0 0 0 3px rgba(255, 127, 80, 0.3);
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 2px rgba(var(--button-bg), 0.2);
     outline: none;
-    background-color: rgba(255, 255, 255, 0.8); /* Plus opaque au focus */
 }
 
-.dark-mode .form-group input:focus,
-.dark-mode .form-group select:focus,
-.dark-mode .form-group textarea:focus {
-    background-color: rgba(0, 0, 0, 0.8);
+.form-group textarea {
+    resize: vertical;
 }
-
 
 .checkbox-group {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px;
+    gap: 15px;
     margin-top: 10px;
 }
 
 .checkbox-group label {
     display: flex;
     align-items: center;
-    font-weight: normal;
-    color: var(--sidebar-text-color);
     cursor: pointer;
+    font-weight: normal; /* Override form-group label bold */
+    color: var(--text-color);
+    gap: 5px;
 }
 
 .checkbox-group input[type="checkbox"] {
-    margin-right: 10px;
-    width: auto; /* Réinitialise la largeur pour les checkboxes */
-    accent-color: var(--button-bg); /* Couleur de la checkbox cochée */
+    width: auto; /* Reset width for checkboxes */
+    margin-right: 5px;
+    accent-color: var(--button-bg); /* Change checkbox color */
 }
 
-.recurring-options {
-    border: 1px dashed var(--border-color);
-    padding: 20px;
-    border-radius: 10px;
-    background-color: rgba(255, 255, 255, 0.3);
-    margin-top: 25px;
-    color: var(--sidebar-text-color);
+/* Buttons */
+.button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
 }
 
-.dark-mode .recurring-options {
-    background-color: rgba(0, 0, 0, 0.3);
+/* Global button styles for specific functional buttons (not all buttons) */
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-.recurring-options h4 {
-    margin-top: 0;
-    color: var(--header-bg);
-    font-size: 1.2em;
-    margin-bottom: 15px;
+button.button-primary {
+    background-color: var(--button-bg);
+    color: white;
 }
 
-/* FullCalendar Overrides */
-.fc-theme-standard td, .fc-theme-standard th {
-    border: 1px solid var(--border-color);
-}
-
-.fc-toolbar-title {
-    color: var(--text-color) !important; /* Important pour écraser le style par défaut de FC */
-    font-size: 1.8em !important;
-}
-
-.fc .fc-button-primary {
-    background-color: var(--button-bg) !important;
-    border-color: var(--button-bg) !important;
-    color: var(--toast-text-color) !important;
-    box-shadow: none !important;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease !important;
-}
-
-.fc .fc-button-primary:hover {
-    background-color: var(--button-hover-bg) !important;
-    border-color: var(--button-hover-bg) !important;
+button.button-primary:hover {
+    background-color: var(--button-hover-bg);
     transform: translateY(-1px);
 }
 
-.fc .fc-button-primary:not(:disabled).fc-button-active {
-    background-color: var(--button-hover-bg) !important;
-    border-color: var(--button-hover-bg) !important;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2) !important;
-}
-
-.fc-daygrid-day {
-    background-color: var(--fullcalendar-day-bg);
-}
-
-.fc-day-other {
-    background-color: var(--fullcalendar-day-other-bg);
-    opacity: 0.7;
-}
-
-.fc-day-today {
-    background-color: var(--fullcalendar-today-bg) !important;
-}
-
-.fc-col-header-cell {
-    background-color: var(--fullcalendar-header-bg) !important;
-    color: var(--text-color) !important;
-    border-color: var(--border-color) !important;
-}
-
-.fc-event {
-    border-radius: 4px;
-    padding: 2px 4px;
-    font-size: 0.85em;
-    text-align: center;
-    cursor: pointer;
-    white-space: normal;
-    color: white !important; /* Texte des événements toujours blanc */
-    border: 1px solid transparent !important; /* Réinitialiser la bordure par défaut de FC */
-}
-
-/* Footer */
-.footer {
-    background-color: var(--header-bg);
+button.button-secondary {
+    background-color: #6c757d; /* Gris par default */
     color: white;
-    text-align: center;
-    padding: 15px 25px;
-    margin-top: auto;
-    box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
-    font-size: 0.85em;
 }
 
-/* Toasts Container - MODIFICATION POUR POSITIONNEMENT EN BAS À DROITE */
+button.button-secondary:hover {
+    background-color: #5a6268;
+    transform: translateY(-1px);
+}
+
+button.button-danger {
+    background-color: var(--toast-error-bg);
+    color: white;
+}
+
+button.button-danger:hover {
+    background-color: #bb2d3b;
+    transform: translateY(-1px);
+}
+
+/* Toast notifications */
 #toastsContainer {
     position: fixed;
-    bottom: 20px; /* Distance du bas */
-    right: 20px; /* Distance de la droite */
+    top: 20px;
+    right: 20px;
+    z-index: 1050; /* Au-dessus de toutes les modales */
     display: flex;
     flex-direction: column;
     gap: 10px;
-    z-index: 1050; /* Au-dessus des modales si besoin */
-    pointer-events: none; /* Permet de cliquer à travers le conteneur */
-    align-items: flex-end; /* Pour empiler les toasts à partir du bas droit */
-    width: auto; /* Largeur automatique */
-    max-width: calc(100vw - 40px); /* Pour ne pas dépasser l'écran sur mobile */
 }
 
-/* Style de base du toast */
 .toast {
-    background-color: var(--toast-info-bg); /* Couleur par défaut */
+    background-color: var(--toast-info-bg);
     color: var(--toast-text-color);
-    padding: 12px 20px;
+    padding: 15px 20px;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    opacity: 0;
-    transform: translateY(20px); /* Commence légèrement en dessous pour l'animation */
-    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-    min-width: 280px;
-    max-width: 380px;
-    pointer-events: all; /* Rétablit le pointer-events pour le toast lui-même */
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.95em;
-    line-height: 1.4;
-}
-
-.toast.show {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     opacity: 1;
-    transform: translateY(0);
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    max-width: 300px;
+    word-wrap: break-word;
+    display: flex; /* Permet d'aligner le texte et l'icône */
+    align-items: center; /* Centre verticalement */
+    gap: 10px; /* Espace entre l'icône et le texte */
 }
 
 .toast.fade-out {
     opacity: 0;
-    transform: translateY(20px); /* Glisse vers le bas en disparaissant */
+    transform: translateX(100%);
 }
 
-/* Couleurs spécifiques pour les types de toast */
-.toast.info {
-    background-color: var(--toast-info-bg);
-}
+.toast.info { background-color: var(--toast-info-bg); }
+.toast.success { background-color: var(--toast-success-bg); }
+.toast.error { background-color: var(--toast-error-bg); }
 
-.toast.success {
-    background-color: var(--toast-success-bg);
-}
-
-.toast.error {
-    background-color: var(--toast-error-bg);
-}
-
-/* Spinner pour les toasts de chargement */
+/* Style pour l'icône de chargement dans le toast */
 .toast-spinner {
     font-size: 1.2em;
-    animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+/* Message info dans les modales/sections */
+p.info-message {
+    background-color: rgba(23, 162, 184, 0.1); /* Bleu clair */
+    border-left: 5px solid #17a2b8;
+    padding: 10px 15px;
+    border-radius: 5px;
+    color: #17a2b8;
+    margin-top: 15px;
 }
 
-/* Styles pour le tableau de statistiques */
+/* Styles pour les statistiques */
 .stats-table-container {
     margin-top: 20px;
-    max-height: 400px; /* Limite la hauteur et ajoute un défilement */
-    overflow-y: auto;
+    max-height: 400px; /* Hauteur maximale pour le défilement */
+    overflow-y: auto; /* Défilement si le contenu dépasse */
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.05); /* Légère ombre interne */
+    background-color: var(--input-bg); /* Un léger fond pour le tableau */
 }
 
 .stats-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.95em;
 }
 
 .stats-table th, .stats-table td {
@@ -705,40 +586,6 @@ button:active {
 }
 
 
-/* Styles spécifiques à la modale de vérification des librairies */
-.library-check-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-}
-
-.library-check-table th,
-.library-check-table td {
-    border: 1px solid var(--border-color);
-    padding: 10px;
-    text-align: left;
-}
-
-.library-check-table th {
-    background-color: var(--fullcalendar-header-bg);
-    font-weight: bold;
-}
-
-.library-check-table .status-ok {
-    color: var(--toast-success-bg);
-    font-weight: bold;
-}
-
-.library-check-table .status-warn {
-    color: orange;
-    font-weight: bold;
-}
-
-.library-check-table .status-error {
-    color: var(--toast-error-bg);
-    font-weight: bold;
-}
-
 /* Responsive design pour les petits écrans */
 @media (max-width: 768px) {
     main {
@@ -749,44 +596,14 @@ button:active {
     }
 
     .sidebar {
-        min-width: unset; /* Annule le min-width sur mobile */
-        max-width: unset; /* Annule le max-width sur mobile */
         width: 100%; /* La sidebar prend toute la largeur */
-        padding: 20px;
-    }
-
-    .calendar-section {
+        flex: none; /* Annule les flexbox sizing précédents */
+        min-width: unset;
         padding: 15px;
-        min-height: 400px; /* Ajuste la hauteur min du calendrier */
     }
 
-    .header {
-        flex-direction: column;
-        align-items: flex-start;
+    .main-content {
         padding: 15px;
-        gap: 8px;
-    }
-
-    .header .action-buttons {
-        margin-top: 10px;
-        margin-left: 0; /* Réinitialise l'alignement pour mobile */
-        width: 100%; /* Les boutons prennent toute la largeur */
-        justify-content: center; /* Centre les boutons si possible */
-    }
-
-    .header h1 {
-        font-size: 1.6em;
-    }
-
-    .header .app-info {
-        margin-left: 0;
-        font-size: 0.75em;
-    }
-
-    .button, button {
-        padding: 8px 15px;
-        font-size: 0.9em;
-        gap: 5px;
     }
 
     .modal-content {
@@ -794,46 +611,16 @@ button:active {
         padding: 20px;
     }
 
-    .modal-header h2 {
-        font-size: 1.5em;
+    .button-group {
+        flex-direction: column;
     }
 
-    .close-button {
-        font-size: 28px;
+    .button-group button {
+        width: 100%;
     }
 
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
-        padding: 10px;
-    }
-
-    /* Toasts sur petits écrans */
-    #toastsContainer {
-        bottom: 10px;
-        right: 10px;
-        left: 10px; /* Étalement horizontal pour mieux s'adapter */
-        align-items: center; /* Centre les toasts au lieu de les aligner à droite */
-    }
-
-    .toast {
-        min-width: unset;
-        max-width: 100%; /* Prend toute la largeur disponible */
-        font-size: 0.85em;
-        padding: 10px 15px;
-    }
-
-    .person-list-container {
-        max-height: 300px; /* Réduit la hauteur max sur mobile */
-    }
-
-    .stats-table th, .stats-table td {
-        padding: 8px 10px;
-        font-size: 0.85em;
-    }
-
-    .library-check-table th, .library-check-table td {
-        padding: 8px 10px;
-        font-size: 0.85em;
+    header {
+        flex-direction: column;
+        gap: 10px;
     }
 }
