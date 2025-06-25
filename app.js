@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.48.2"; // INCEMENTATION : Correction de la double pagination du PDF avec gestion d'erreur
+const APP_VERSION = "v20.48.3"; // INCEMENTATION : Correction de la double pagination du PDF et mise à jour de la version
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -32,1237 +32,1415 @@ function openDB() {
     return new Promise((resolve, reject) => {
         const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-        request.onupgradeneeded = function(event) {
+        request.onupgradeneeded = (event) => {
             db = event.target.result;
             if (!db.objectStoreNames.contains(STORE_PEOPLE)) {
-                db.createObjectStore(STORE_PEOPLE, { keyPath: 'id', autoIncrement: true });
+                db.createObjectStore(STORE_PEOPLE, { keyPath: 'id' });
             }
             if (!db.objectStoreNames.contains(STORE_EVENTS)) {
-                db.createObjectStore(STORE_EVENTS, { keyPath: 'id', autoIncrement: true });
+                db.createObjectStore(STORE_EVENTS, { keyPath: 'id' });
             }
+            // Créer le nouveau store pour les données PDF
             if (!db.objectStoreNames.contains(STORE_PDF_GENERATION)) {
-                db.createObjectStore(STORE_PDF_GENERATION, { keyPath: 'id', autoIncrement: true });
+                db.createObjectStore(STORE_PDF_GENERATION, { keyPath: 'date' });
             }
-            console.log('IndexedDB upgraded/created successfully.');
         };
 
-        request.onsuccess = function(event) {
+        request.onsuccess = (event) => {
             db = event.target.result;
-            console.log('IndexedDB opened successfully.');
             resolve(db);
         };
 
-        request.onerror = function(event) {
-            console.error('Error opening IndexedDB:', event.target.errorCode);
-            reject(event.target.errorCode);
+        request.onerror = (event) => {
+            console.error("IndexedDB error:", event.target.errorCode);
+            reject("Error opening IndexedDB");
         };
     });
 }
 
-// Fonction générique pour ajouter des données
-function addData(storeName, data) {
+// Fonctions génériques pour IndexedDB
+function operateOnDB(storeName, mode, operation) {
     return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readwrite');
+        if (!db) {
+            // Tente de rouvrir la DB si elle n'est pas déjà ouverte
+            openDB().then(() => {
+                const transaction = db.transaction([storeName], mode);
+                const store = transaction.objectStore(storeName);
+                const request = operation(store);
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = (event) => reject(event.target.error);
+            }).catch(reject); // Si openDB échoue
+            return;
+        }
+        const transaction = db.transaction([storeName], mode);
         const store = transaction.objectStore(storeName);
-        const request = store.add(data);
+        const request = operation(store);
 
         request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
+        request.onerror = (event) => reject(event.target.error);
     });
 }
 
-// Fonction générique pour récupérer toutes les données
-function getAllData(storeName) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readonly');
-        const store = transaction.objectStore(storeName);
-        const request = store.getAll();
 
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+async function addItem(storeName, item) {
+    return operateOnDB(storeName, 'readwrite', (store) => store.add(item));
 }
 
-// Fonction générique pour mettre à jour des données
-function updateData(storeName, data) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.put(data);
-
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-    });
+async function putItem(storeName, item) {
+    return operateOnDB(storeName, 'readwrite', (store) => store.put(item));
 }
 
-// Fonction générique pour supprimer des données
-function deleteData(storeName, id) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.delete(id);
-
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-    });
+async function getItem(storeName, id) {
+    return operateOnDB(storeName, 'readonly', (store) => store.get(id));
 }
 
-// Nettoyer un store
-function clearStore(storeName) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction([storeName], 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.clear();
-
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-    });
+async function getAllItems(storeName) {
+    return operateOnDB(storeName, 'readonly', (store) => store.getAll());
 }
 
-// --- Initialisation de l'application ---
+async function deleteItem(storeName, id) {
+    return operateOnDB(storeName, 'readwrite', (store) => store.delete(id));
+}
+
+async function clearStore(storeName) {
+    return operateOnDB(storeName, 'readwrite', (store) => store.clear());
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-    // Extend Day.js with necessary plugins
+    console.log(`${APP_NAME} - Version ${APP_VERSION} chargée !`);
+
+    // Mise à jour de l'année du copyright et du nom/version de l'application
+    document.getElementById('currentYear').textContent = dayjs().year();
+    document.getElementById('appInfo').textContent = `${APP_NAME}. Version ${APP_VERSION}`;
+
+    // Initialisation de Day.js plugins
     dayjs.extend(dayjs_plugin_customParseFormat);
     dayjs.extend(dayjs_plugin_isBetween);
     dayjs.extend(dayjs_plugin_weekday);
     dayjs.extend(dayjs_plugin_isSameOrBefore);
+    dayjs.extend(dayjs_plugin_minMax);
+    dayjs.extend(dayjs_plugin_isSameOrAfter);
+    dayjs.locale('fr'); // GLOBALEMENT : Définir la locale française pour Day.js
 
-    await openDB(); // Ouvre la base de données au chargement
+    try {
+        await openDB(); // Ouvre la base de données au démarrage
+        await loadAllData(); // Charge toutes les données depuis IndexedDB
+        renderPeopleList(); // Afficher la liste des personnes chargées
 
-    loadPeople();
-    loadEvents();
-    renderCalendar();
-    updateAppInfo();
-    setupEventListeners();
-    updateCurrentYear();
-    initializeTheme(); // Initialise le thème sombre si préféré
-    setupAppCache(); // Active le service worker pour le cache
+        // Initialisation de FullCalendar
+        initFullCalendar();
+        updateCalendarEventsDisplay(); // Affiche les événements des personnes visibles au démarrage
+
+    } catch (error) {
+        console.error("Erreur lors de l'initialisation de l'application:", error);
+        showToast("Erreur lors du chargement des données. L'application pourrait ne pas fonctionner correctement.", "error", 10000);
+    }
+
+    // Gestion du thème sombre/clair
+    const themeToggleButton = document.getElementById('themeToggleButton');
+    if (themeToggleButton) {
+        themeToggleButton.addEventListener('click', toggleTheme);
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+            themeToggleButton.textContent = 'Thème Clair';
+        } else {
+            themeToggleButton.textContent = 'Thème Sombre';
+        }
+    }
+
+    // Gestionnaires d'événements pour les boutons (certains sont maintenant dans l'HTML avec onclick)
+    const addPersonBtn = document.getElementById('addPersonBtn');
+    if (addPersonBtn) addPersonBtn.addEventListener('click', showAddPersonModal);
+
+    const addPlanningEventBtn = document.getElementById('addPlanningEventBtn');
+    if (addPlanningEventBtn) addPlanningEventBtn.addEventListener('click', () => showAddPlanningEventModal());
+
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+    if (exportPdfBtn) exportPdfBtn.addEventListener('click', () => showExportOptionsModal('pdf'));
+
+    const exportPngBtn = document.getElementById('exportPngBtn');
+    if (exportPngBtn) exportPngBtn.addEventListener('click', () => showToast("Fonctionnalité à venir.", "info"));
+
+    const exportJsonBtn = document.getElementById('exportJsonBtn');
+    if (exportJsonBtn) exportJsonBtn.addEventListener('click', exportDataToJson);
+
+    const importJsonBtn = document.getElementById('importJsonBtn');
+    if (importJsonBtn) importJsonBtn.addEventListener('click', showImportModal);
+
+    const showStatsBtn = document.getElementById('showStatsBtn');
+    if (showStatsBtn) showStatsBtn.addEventListener('click', showStatsModal);
 });
 
-function updateAppInfo() {
-    document.getElementById('appInfo').textContent = `${APP_NAME} ${APP_VERSION}`;
-}
-
-function updateCurrentYear() {
-    document.getElementById('currentYear').textContent = new Date().getFullYear();
-}
-
-function setupAppCache() {
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/service-worker.js')
-            .then(reg => {
-                console.log('Service Worker Registered!', reg);
-                showToast("Application prête pour le mode hors ligne !", "info");
-            })
-            .catch(err => {
-                console.error('Service Worker registration failed: ', err);
-                showToast("Erreur lors de l'activation du mode hors ligne.", "error");
-            });
+// Fonctions utilitaires pour le thème
+function toggleTheme() {
+    document.body.classList.toggle('dark-mode');
+    const themeToggleButton = document.getElementById('themeToggleButton');
+    if (document.body.classList.contains('dark-mode')) {
+        localStorage.setItem('theme', 'dark');
+        if (themeToggleButton) themeToggleButton.textContent = 'Thème Clair';
+    } else {
+        localStorage.setItem('theme', 'light');
+        if (themeToggleButton) themeToggleButton.textContent = 'Thème Sombre';
     }
 }
 
-// --- Gestion des Personnes ---
-function loadPeople() {
-    getAllData(STORE_PEOPLE).then(data => {
-        people = data;
-        updatePeopleList();
-        renderCalendar(); // Re-render calendar after loading people
-    }).catch(error => {
-        console.error("Erreur lors du chargement des personnes:", error);
-        showToast("Erreur lors du chargement des personnes.", "error");
+// Gestion des Toasts (notifications)
+let currentToast = null; // Pour gérer un seul toast à la fois
+
+function showToast(message, type = 'info', duration = 3000, isLoading = false) {
+    const toastsContainer = document.getElementById('toastsContainer');
+    if (!toastsContainer) return;
+
+    // Supprime le toast précédent s'il existe
+    if (currentToast) {
+        currentToast.remove();
+        clearTimeout(currentToast.timer);
+    }
+
+    const toast = document.createElement('div');
+    toast.classList.add('toast', type);
+    toast.innerHTML = `
+        ${isLoading ? '<i class="fas fa-hourglass-half fa-spin toast-spinner"></i>' : ''}
+        <span>${message}</span>
+    `;
+
+    toastsContainer.appendChild(toast);
+    currentToast = toast;
+
+    if (duration !== 0) { // Si duration est 0, le toast reste indéfiniment
+        currentToast.timer = setTimeout(() => {
+            toast.classList.add('fade-out');
+            toast.addEventListener('transitionend', () => {
+                toast.remove();
+                if (currentToast === toast) { // Évite de supprimer un nouveau toast
+                    currentToast = null;
+                }
+            });
+        }, duration);
+    }
+}
+
+function hideToast() {
+    if (currentToast) {
+        currentToast.classList.add('fade-out');
+        currentToast.addEventListener('transitionend', () => {
+            currentToast.remove();
+            currentToast = null;
+        }, { once: true });
+        clearTimeout(currentToast.timer); // Assurez-vous de clear le timer
+    }
+}
+
+
+// --- Fonctions de gestion des Modales ---
+function showModal(title, contentHtml, buttons = []) {
+    let modal = document.getElementById('dynamicModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'dynamicModal';
+        modal.classList.add('modal');
+        document.getElementById('modalsContainer').appendChild(modal);
+    }
+    const oldCloseButton = modal.querySelector('.close-button');
+    if (oldCloseButton) {
+        oldCloseButton.removeEventListener('click', closeModal);
+    }
+
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>${title}</h2>
+                <span class="close-button">&times;</span>
+            </div>
+            <div class="modal-body">
+                ${contentHtml}
+            </div>
+            <div class="modal-footer">
+                ${buttons.map(btn => `<button class="${btn.class || ''}" onclick="${btn.onclick}">${btn.text}</button>`).join('')}
+            </div>
+        </div>
+    `;
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+    document.body.style.overflow = 'hidden'; // Empêche le défilement du body
+
+    modal.querySelector('.close-button').addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            closeModal();
+        }
     });
 }
 
-function addPerson() {
-    showModal(`
-        <h2>Ajouter une nouvelle personne</h2>
-        <div class="form-group">
-            <label for="personName">Nom de la personne :</label>
-            <input type="text" id="personName" placeholder="Ex: Jean Dupont" required>
-        </div>
-        <div class="form-group">
-            <label for="personEmail">Email (optionnel) :</label>
-            <input type="email" id="personEmail" placeholder="Ex: jean.dupont@exemple.com">
-        </div>
-        <div class="form-group">
-            <label for="personPhone">Téléphone (optionnel) :</label>
-            <input type="tel" id="personPhone" placeholder="Ex: 0612345678">
-        </div>
-        <div class="modal-actions">
-            <button class="button-primary" onclick="savePerson()">Ajouter</button>
-            <button class="button-secondary" onclick="closeModal()">Annuler</button>
-        </div>
-    `);
+function closeModal() {
+    const modal = document.getElementById('dynamicModal');
+    if (modal) {
+        modal.classList.remove('show');
+        modal.addEventListener('transitionend', () => {
+            modal.style.display = 'none';
+            modal.innerHTML = '';
+        }, { once: true });
+    }
+    document.body.style.overflow = '';
 }
 
-async function savePerson() {
-    const nameInput = document.getElementById('personName');
-    const emailInput = document.getElementById('personEmail');
-    const phoneInput = document.getElementById('personPhone');
+function createAndShowModal(title, content, primaryButtonText, primaryButtonAction, cancelButtonText = 'Annuler', cancelButtonAction = 'closeModal()') {
+    const buttons = [];
+    if (primaryButtonText && primaryButtonAction) {
+        buttons.push({ text: primaryButtonText, onclick: primaryButtonAction, class: 'button-primary' });
+    }
+    if (cancelButtonText && cancelButtonAction) {
+        buttons.push({ text: cancelButtonText, onclick: cancelButtonAction, class: 'button-secondary' });
+    }
+    showModal(title, content, buttons);
+}
 
-    const name = nameInput.value.trim();
-    const email = emailInput.value.trim();
-    const phone = phoneInput.value.trim();
+// Fonctions pour créer des éléments de formulaire
+function createInput(id, label, type = 'text', value = '', placeholder = '', required = false, dataAttrs = {}) {
+    const requiredAttr = required ? 'required' : '';
+    const dataAttributesString = Object.keys(dataAttrs).map(key => `data-${key}="${dataAttrs[key]}"`).join(' ');
+    return `
+        <div class="form-group">
+            <label for="${id}">${label}${required ? ' *' : ''}</label>
+            <input type="${type}" id="${id}" value="${value}" placeholder="${placeholder}" ${requiredAttr} ${dataAttributesString}>
+        </div>
+    `;
+}
 
-    if (name) {
-        const newPerson = { name, email, phone };
-        try {
-            const id = await addData(STORE_PEOPLE, newPerson);
-            newPerson.id = id; // Set the ID returned by IndexedDB
-            people.push(newPerson);
-            updatePeopleList();
-            renderCalendar(); // Re-render calendar after adding person
-            closeModal();
-            showToast(`"${name}" a été ajoutée.`, "success");
-        } catch (error) {
-            console.error("Erreur lors de l'enregistrement de la personne:", error);
-            showToast("Erreur lors de l'enregistrement de la personne.", "error");
+function createCheckboxGroup(name, label, options, selectedValues = [], idPrefix = '') {
+    let checkboxesHtml = options.map(option => `
+        <label>
+            <input type="checkbox" id="${idPrefix}${option.value}" name="${name}" value="${option.value}" ${selectedValues.includes(option.value) ? 'checked' : ''}>
+            ${option.label}
+        </label>
+    `).join('');
+    return `
+        <div class="form-group">
+            <p>${label}</p>
+            <div class="checkbox-group">
+                ${checkboxesHtml}
+            </div>
+        </div>
+    `;
+}
+
+function createSelectInput(id, label, options, selectedValue = '', required = false, onChange = '') {
+    const requiredAttr = required ? 'required' : '';
+    const onChangeAttr = onChange ? `onchange="${onChange}"` : '';
+    const optionsHtml = options.map(option => `
+        <option value="${option.value}" ${option.value === selectedValue ? 'selected' : ''}>${option.label}</option>
+    `).join('');
+    return `
+        <div class="form-group">
+            <label for="${id}">${label}${required ? ' *' : ''}</label>
+            <select id="${id}" ${requiredAttr} ${onChangeAttr}>
+                ${optionsHtml}
+            </select>
+        </div>
+    `;
+}
+
+function createTextArea(id, label, value = '', placeholder = '', rows = 3) {
+    return `
+        <div class="form-group">
+            <label for="${id}">${label}</label>
+            <textarea id="${id}" placeholder="${placeholder}" rows="${rows}">${value}</textarea>
+        </div>
+    `;
+}
+
+function createDatePicker(id, label, value = '', required = false, dataAttrs = {}) {
+    const requiredAttr = required ? 'required' : '';
+    const dataAttributesString = Object.keys(dataAttrs).map(key => `data-${key}="${dataAttrs[key]}"`).join(' ');
+    return `
+        <div class="form-group">
+            <label for="${id}">${label}${required ? ' *' : ''}</label>
+            <input type="date" id="${id}" value="${value}" ${requiredAttr} ${dataAttributesString}>
+        </div>
+    `;
+}
+
+
+// --- Fonctions de gestion des personnes (maintenant avec IndexedDB) ---
+async function savePeople() {
+    try {
+        await clearStore(STORE_PEOPLE);
+        for (const person of people) {
+            await putItem(STORE_PEOPLE, person);
         }
-    } else {
-        showToast("Le nom de la personne est requis.", "error");
+    } catch (error) {
+        console.error("Erreur lors de la sauvegarde des personnes:", error);
+        showToast("Erreur lors de la sauvegarde des personnes.", "error");
     }
 }
 
-function updatePeopleList() {
-    const peopleList = document.getElementById('peopleList');
-    peopleList.innerHTML = '';
+async function loadPeopleFromDB() {
+    try {
+        const storedPeople = await getAllItems(STORE_PEOPLE);
+        if (storedPeople) {
+            people = storedPeople.map(p => ({
+                ...p,
+                isVisible: p.isVisible !== undefined ? p.isVisible : true,
+                color: p.color || null
+            }));
+        }
+    } catch (error) {
+        console.error("Erreur lors du chargement des personnes:", error);
+        showToast("Erreur lors du chargement des personnes.", "error");
+        people = [];
+    }
+}
+
+function renderPeopleList() {
+    const peopleListUl = document.getElementById('peopleList');
+    if (!peopleListUl) return;
+
+    peopleListUl.innerHTML = '';
     people.forEach(person => {
         const li = document.createElement('li');
+        if (!person.isVisible) {
+            li.classList.add('person-hidden');
+        }
+        li.dataset.personId = person.id;
         li.innerHTML = `
             <span>${person.name}</span>
             <div class="person-actions">
-                <button class="button-icon" onclick="editPerson(${person.id})"><i class="fas fa-edit"></i></button>
-                <button class="button-icon" onclick="confirmDeletePerson(${person.id})"><i class="fas fa-trash-alt"></i></button>
+                <button class="toggle-visibility-btn" title="${person.isVisible ? 'Cacher' : 'Afficher'} dans le calendrier">
+                    <i class="fas ${person.isVisible ? 'fa-eye' : 'fa-eye-slash'}"></i>
+                </button>
+                <button class="edit-person-btn" title="Modifier la personne">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="delete-person-btn" title="Supprimer la personne">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
         `;
-        peopleList.appendChild(li);
+        peopleListUl.appendChild(li);
+
+        li.querySelector('.toggle-visibility-btn').addEventListener('click', async (e) => {
+            togglePersonVisibility(person.id, e.currentTarget);
+            await savePeople();
+        });
+        li.querySelector('.edit-person-btn').addEventListener('click', () => showEditPersonModal(person.id));
+        li.querySelector('.delete-person-btn').addEventListener('click', () => confirmDeletePerson(person.id));
     });
 }
 
-function editPerson(id) {
-    const personToEdit = people.find(p => p.id === id);
-    if (!personToEdit) return;
+function togglePersonVisibility(personId, buttonElement) {
+    const person = people.find(p => p.id === personId);
+    if (person) {
+        person.isVisible = !person.isVisible;
+        
+        const icon = buttonElement.querySelector('i');
+        if (person.isVisible) {
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+            buttonElement.title = 'Cacher dans le calendrier';
+            buttonElement.closest('li').classList.remove('person-hidden');
+        } else {
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+            buttonElement.title = 'Afficher dans le calendrier';
+            buttonElement.closest('li').classList.add('person-hidden');
+        }
 
-    showModal(`
-        <h2>Modifier une personne</h2>
-        <div class="form-group">
-            <label for="editPersonName">Nom :</label>
-            <input type="text" id="editPersonName" value="${personToEdit.name}" required>
-        </div>
-        <div class="form-group">
-            <label for="editPersonEmail">Email (optionnel) :</label>
-            <input type="email" id="editPersonEmail" value="${personToEdit.email || ''}">
-        </div>
-        <div class="form-group">
-            <label for="editPersonPhone">Téléphone (optionnel) :</label>
-            <input type="tel" id="editPersonPhone" value="${personToEdit.phone || ''}">
-        </div>
-        <div class="modal-actions">
-            <button class="button-primary" onclick="saveEditedPerson(${id})">Sauvegarder</button>
-            <button class="button-secondary" onclick="closeModal()">Annuler</button>
-        </div>
-    `);
+        updateCalendarEventsDisplay();
+        showToast(`Visibilité de ${person.name} : ${person.isVisible ? 'Affichée' : 'Masquée'}.`, 'info');
+    }
 }
 
-async function saveEditedPerson(id) {
+function showAddPersonModal() {
+    const content = `
+        ${createInput('personName', 'Nom de la personne', 'text', '', 'Ex: Jean Dupont', true)}
+    `;
+    createAndShowModal(
+        'Ajouter une nouvelle personne',
+        content,
+        'Ajouter',
+        'addPerson()'
+    );
+}
+
+async function addPerson() {
+    const nameInput = document.getElementById('personName');
+    const name = nameInput ? nameInput.value.trim() : '';
+
+    if (!name) {
+        showToast('Le nom de la personne est requis.', 'error');
+        return;
+    }
+
+    if (people.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+        showToast('Une personne avec ce nom existe déjà.', 'error');
+        return;
+    }
+
+    const newPerson = {
+        id: crypto.randomUUID(),
+        name: name,
+        color: null,
+        isVisible: true
+    };
+    people.push(newPerson);
+    await savePeople();
+    renderPeopleList();
+    closeModal();
+    showToast(`Personne "${name}" ajoutée !`, 'success');
+
+    updateCalendarEventsDisplay();
+}
+
+function showEditPersonModal(personId) {
+    const person = people.find(p => p.id === personId);
+    if (!person) {
+        showToast("Personne introuvable.", "error");
+        return;
+    }
+
+    const content = `
+        ${createInput('editPersonName', 'Nom de la personne', 'text', person.name, 'Ex: Jean Dupont', true)}
+    `;
+    createAndShowModal(
+        `Modifier ${person.name}`,
+        content,
+        'Sauvegarder',
+        `editPerson('${person.id}')`
+    );
+}
+
+async function editPerson(personId) {
     const nameInput = document.getElementById('editPersonName');
-    const emailInput = document.getElementById('editPersonEmail');
-    const phoneInput = document.getElementById('editPersonPhone');
+    const newName = nameInput ? nameInput.value.trim() : '';
 
-    const name = nameInput.value.trim();
-    const email = emailInput.value.trim();
-    const phone = phoneInput.value.trim();
+    if (!newName) {
+        showToast('Le nom de la personne est requis.', 'error');
+        return;
+    }
 
-    if (name) {
-        const personIndex = people.findIndex(p => p.id === id);
-        if (personIndex > -1) {
-            people[personIndex].name = name;
-            people[personIndex].email = email;
-            people[personIndex].phone = phone;
+    const person = people.find(p => p.id === personId);
+    if (person) {
+        if (people.some(p => p.id !== personId && p.name.toLowerCase() === newName.toLowerCase())) {
+            showToast('Une autre personne avec ce nom existe déjà.', 'error');
+            return;
+        }
 
-            try {
-                await updateData(STORE_PEOPLE, people[personIndex]);
-                updatePeopleList();
-                renderCalendar(); // Re-render calendar after updating person
-                closeModal();
-                showToast(`"${name}" a été mise à jour.`, "success");
-            } catch (error) {
-                console.error("Erreur lors de la mise à jour de la personne:", error);
-                showToast("Erreur lors de la mise à jour de la personne.", "error");
+        const oldName = person.name;
+        person.name = newName;
+
+        allCalendarEvents.forEach(event => {
+            if (event.personId === person.id) {
+                const eventTypeDisplay = getEventTypeDisplayName(event.type);
+                event.title = `${person.name} (${eventTypeDisplay})`;
             }
-        }
-    } else {
-        showToast("Le nom de la personne est requis.", "error");
-    }
-}
+        });
 
-
-function confirmDeletePerson(id) {
-    const personToDelete = people.find(p => p.id === id);
-    if (!personToDelete) return;
-
-    showModal(`
-        <h2>Confirmer la suppression</h2>
-        <p>Êtes-vous sûr de vouloir supprimer "${personToDelete.name}" ?</p>
-        <div class="modal-actions">
-            <button class="button-danger" onclick="deletePerson(${id})">Supprimer</button>
-            <button class="button-secondary" onclick="closeModal()">Annuler</button>
-        </div>
-    `);
-}
-
-async function deletePerson(id) {
-    try {
-        await deleteData(STORE_PEOPLE, id);
-        people = people.filter(p => p.id !== id);
-        // Also delete events associated with this person
-        allCalendarEvents = allCalendarEvents.filter(event => event.personId !== id);
-        await clearStore(STORE_EVENTS); // Clear existing events
-        for (const event of allCalendarEvents) { // Add remaining events back
-            await addData(STORE_EVENTS, event);
-        }
-        updatePeopleList();
-        renderCalendar(); // Re-render calendar after deleting person
+        await savePeople();
+        await saveCalendarEvents();
+        renderPeopleList();
+        updateCalendarEventsDisplay();
         closeModal();
-        showToast("Personne et événements associés supprimés.", "success");
-    } catch (error) {
-        console.error("Erreur lors de la suppression de la personne:", error);
-        showToast("Erreur lors de la suppression de la personne.", "error");
+        showToast(`Personne "${oldName}" modifiée en "${newName}" !`, 'success');
+    } else {
+        showToast("Erreur: Personne introuvable.", "error");
     }
 }
 
-// --- Gestion des Événements du Calendrier ---
-function loadEvents() {
-    getAllData(STORE_EVENTS).then(data => {
-        allCalendarEvents = data;
-        renderCalendar(); // Re-render calendar after loading events
-    }).catch(error => {
+function confirmDeletePerson(personId) {
+    const person = people.find(p => p.id === personId);
+    if (!person) return;
+
+    createAndShowModal(
+        'Confirmer la suppression',
+        `<p>Êtes-vous sûr de vouloir supprimer la personne "${person.name}" ? Tous les événements associés à cette personne seront également supprimés.</p>`,
+        'Supprimer',
+        `deletePerson('${person.id}')`,
+        'Annuler'
+    );
+}
+
+async function deletePerson(personId) {
+    const initialPeopleCount = people.length;
+    people = people.filter(p => p.id !== personId);
+    if (people.length < initialPeopleCount) {
+        allCalendarEvents = allCalendarEvents.filter(event => event.personId !== personId);
+        await savePeople();
+        await saveCalendarEvents();
+        renderPeopleList();
+        updateCalendarEventsDisplay();
+        closeModal();
+        showToast('Personne et ses événements supprimés !', 'success');
+    } else {
+        showToast("Erreur: Personne introuvable pour suppression.", "error");
+    }
+}
+
+// --- Gestion des événements du calendrier (maintenant avec IndexedDB) ---
+async function saveCalendarEvents() {
+    try {
+        await clearStore(STORE_EVENTS);
+        for (const event of allCalendarEvents) {
+            await putItem(STORE_EVENTS, event);
+        }
+    } catch (error) {
+        console.error("Erreur lors de la sauvegarde des événements:", error);
+        showToast("Erreur lors de la sauvegarde des événements.", "error");
+    }
+}
+
+async function loadCalendarEvents() {
+    try {
+        const storedEvents = await getAllItems(STORE_EVENTS);
+        if (storedEvents) {
+            allCalendarEvents = storedEvents.map(event => {
+                const person = people.find(p => p.id === event.personId);
+                const eventColor = EVENT_COLORS[event.type] || '#000000';
+                const eventTypeDisplay = getEventTypeDisplayName(event.type);
+
+                return {
+                    ...event,
+                    title: person ? `${person.name} (${eventTypeDisplay})` : `[Inconnu] (${eventTypeDisplay})`,
+                    backgroundColor: eventColor,
+                    borderColor: eventColor,
+                    allDay: true
+                };
+            });
+        }
+    } catch (error) {
         console.error("Erreur lors du chargement des événements:", error);
         showToast("Erreur lors du chargement des événements.", "error");
-    });
+        allCalendarEvents = [];
+    }
 }
 
-function renderCalendar() {
-    const calendarEl = document.getElementById('calendar');
+async function loadAllData() {
+    await loadPeopleFromDB();
+    await loadCalendarEvents();
+}
+
+function updateCalendarEventsDisplay() {
+    const visiblePeopleIds = people.filter(p => p.isVisible).map(p => p.id);
+    const eventsToShow = allCalendarEvents.filter(event => visiblePeopleIds.includes(event.personId));
+
     if (calendar) {
-        calendar.destroy(); // Destroy existing calendar to re-render
+        calendar.setOption('events', eventsToShow);
     }
+}
+
+function initFullCalendar() {
+    const calendarEl = document.getElementById('calendar');
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'fr',
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
         },
-        events: allCalendarEvents.map(event => ({
-            id: event.id,
-            title: `${people.find(p => p.id === event.personId)?.name || 'Inconnu'} (${event.type})`,
-            start: event.startDate,
-            end: event.endDate ? dayjs(event.endDate).add(1, 'day').format('YYYY-MM-DD') : event.startDate, // FullCalendar end date is exclusive
-            allDay: true,
-            backgroundColor: EVENT_COLORS[event.type] || '#3788d8', // Default blue
-            borderColor: EVENT_COLORS[event.type] || '#3788d8',
-            extendedProps: {
-                personId: event.personId,
-                type: event.type,
-                recurrent: event.recurrent,
-                recurrencePattern: event.recurrencePattern
-            }
-        })),
+        editable: true,
+        selectable: true,
+        eventDidMount: function(info) {
+            info.el.title = `${info.event.title}`;
+        },
         eventClick: function(info) {
-            // Check if the event is a recurrent event's instance
-            if (info.event.extendedProps.recurrent) {
-                // If it's a recurrent instance, show original recurrent event details
-                const originalEventId = info.event.extendedProps.originalRecurrentEventId || info.event.id;
-                const originalEvent = allCalendarEvents.find(e => e.id === originalEventId);
-                if (originalEvent) {
-                    showEventDetails(originalEvent);
-                } else {
-                    showToast("Détails de l'événement récurrent introuvables.", "error");
-                }
-            } else {
-                // For regular events or original recurrent events
-                const eventInDB = allCalendarEvents.find(e => e.id === info.event.id);
-                if (eventInDB) {
-                    showEventDetails(eventInDB);
-                } else {
-                    showToast("Détails de l'événement introuvables.", "error");
-                }
-            }
+            const eventId = info.event.id;
+            showEditPlanningEventModal(eventId);
         },
-        datesSet: function(dateInfo) {
-            // This callback fires when the calendar's dates change (prev/next month, view change)
-            checkPermanenceAvailability();
-        }
+        select: function(info) {
+            showAddPlanningEventModal(info.startStr, info.endStr);
+        },
+        events: []
     });
     calendar.render();
-    checkPermanenceAvailability(); // Initial check on render
 }
 
-
-function showEventDetails(event) {
-    const person = people.find(p => p.id === event.personId);
-    if (!person) {
-        showToast("Personne associée à l'événement introuvable.", "error");
-        return;
+// Fonction utilitaire pour obtenir le nom d'affichage du type d'événement
+function getEventTypeDisplayName(type) {
+    switch (type) {
+        case 'permanence': return 'Permanence';
+        case 'permanence_backup': return 'Permanence (Backup)';
+        case 'telework_punctual': return 'Télétravail (ponctuel)';
+        case 'telework_recurrent': return 'Télétravail (récurrent)';
+        case 'leave': return 'Congé';
+        default: return type;
     }
-
-    let recurrenceInfo = '';
-    if (event.recurrent) {
-        recurrenceInfo = `<p><strong>Récurrence :</strong> ${event.recurrencePattern.interval} ${event.recurrencePattern.unit}(s)</p>`;
-        if (event.recurrencePattern.daysOfWeek && event.recurrencePattern.daysOfWeek.length > 0) {
-            recurrenceInfo += `<p><strong>Jours de la semaine :</strong> ${event.recurrencePattern.daysOfWeek.map(d => ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][d]).join(', ')}</p>`;
-        }
-        if (event.recurrencePattern.until) {
-            recurrenceInfo += `<p><strong>Jusqu'à :</strong> ${dayjs(event.recurrencePattern.until).format('DD/MM/YYYY')}</p>`;
-        }
-    }
-
-    showModal(`
-        <h2>Détails de l'événement</h2>
-        <p><strong>Personne :</strong> ${person.name}</p>
-        <p><strong>Type :</strong> ${event.type}</p>
-        <p><strong>Du :</strong> ${dayjs(event.startDate).format('DD/MM/YYYY')}</p>
-        <p><strong>Au :</strong> ${dayjs(event.endDate).format('DD/MM/YYYY')}</p>
-        ${recurrenceInfo}
-        <div class="modal-actions">
-            <button class="button-primary" onclick="editPlanningEvent(${event.id})">Modifier</button>
-            <button class="button-danger" onclick="confirmDeleteEvent(${event.id})">Supprimer</button>
-            <button class="button-secondary" onclick="closeModal()">Fermer</button>
-        </div>
-    `);
 }
 
-
-function addPlanningEvent() {
+function showAddPlanningEventModal(startStr = '', endStr = '') {
     if (people.length === 0) {
-        showToast("Veuillez ajouter au moins une personne avant de gérer les événements.", "info");
+        showToast("Veuillez ajouter au moins une personne d'abord.", "error");
         return;
     }
 
-    const peopleOptions = people.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    const personOptions = people.map(p => ({ value: p.id, label: p.name }));
+    const eventTypeOptions = [
+        { value: 'permanence', label: 'Permanence' },
+        { value: 'permanence_backup', label: 'Permanence (Backup)' },
+        { value: 'telework_punctual', label: 'Télétravail (ponctuel)' },
+        { value: 'telework_recurrent', label: 'Télétravail (récurrent)' },
+        { value: 'leave', label: 'Congé' }
+    ];
 
-    showModal(`
-        <h2>Ajouter/Gérer un événement de planning</h2>
-        <div class="form-group">
-            <label for="eventPerson">Personne :</label>
-            <select id="eventPerson">${peopleOptions}</select>
-        </div>
-        <div class="form-group">
-            <label for="eventType">Type d'événement :</label>
-            <select id="eventType">
-                <option value="permanence">Permanence (présence sur site)</option>
-                <option value="permanence_backup">Permanence Backup</option>
-                <option value="telework_punctual">Télétravail ponctuel</option>
-                <option value="telework_recurrent">Télétravail récurrent</option>
-                <option value="leave">Congé / Absence</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="eventStartDate">Date de début :</label>
-            <input type="date" id="eventStartDate" required>
-        </div>
-        <div class="form-group">
-            <label for="eventEndDate">Date de fin :</label>
-            <input type="date" id="eventEndDate">
-        </div>
-        <div class="form-group">
-            <input type="checkbox" id="isRecurrent">
-            <label for="isRecurrent">Événement récurrent</label>
-        </div>
-        <div id="recurrenceOptions" style="display:none;">
-            <div class="form-group">
-                <label for="recurrenceInterval">Fréquence :</label>
-                <input type="number" id="recurrenceInterval" value="1" min="1">
-                <select id="recurrenceUnit">
-                    <option value="day">jour(s)</option>
-                    <option value="week">semaine(s)</option>
-                    <option value="month">mois</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Jours de la semaine (pour récurrence hebdomadaire) :</label>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="recDay0" value="0"><label for="recDay0">Dim</label>
-                    <input type="checkbox" id="recDay1" value="1"><label for="recDay1">Lun</label>
-                    <input type="checkbox" id="recDay2" value="2"><label for="recDay2">Mar</label>
-                    <input type="checkbox" id="recDay3" value="3"><label for="recDay3">Mer</label>
-                    <input type="checkbox" id="recDay4" value="4"><label for="recDay4">Jeu</label>
-                    <input type="checkbox" id="recDay5" value="5"><label for="recDay5">Ven</label>
-                    <input type="checkbox" id="recDay6" value="6"><label for="recDay6">Sam</label>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="recurrenceUntil">Répéter jusqu'à (date de fin optionnelle) :</label>
-                <input type="date" id="recurrenceUntil">
-            </div>
-        </div>
-        <div class="modal-actions">
-            <button class="button-primary" onclick="savePlanningEvent()">Ajouter l'événement</button>
-            <button class="button-secondary" onclick="closeModal()">Annuler</button>
-        </div>
-    `);
+    const currentYear = dayjs().year();
+    const endOfYear = dayjs().endOf('year').format('YYYY-MM-DD');
 
-    document.getElementById('isRecurrent').addEventListener('change', function() {
-        document.getElementById('recurrenceOptions').style.display = this.checked ? 'block' : 'none';
-    });
+    const defaultEndDate = endStr ? dayjs(endStr).subtract(1, 'day').format('YYYY-MM-DD') : startStr;
 
-    const today = dayjs().format('YYYY-MM-DD');
-    document.getElementById('eventStartDate').value = today;
-    document.getElementById('eventEndDate').value = today;
+
+    const content = `
+        ${createSelectInput('personSelect', 'Personne', personOptions, people[0].id, true)}
+        ${createSelectInput('eventTypeSelect', 'Type d\'événement', eventTypeOptions, 'permanence', true, 'handleEventTypeChange(this.value)')}
+        ${createDatePicker('eventStartDate', 'Date de début', startStr, true)}
+        ${createDatePicker('eventEndDate', 'Date de fin (optionnel)', defaultEndDate)}
+        
+        <div id="recurrenceOptions" class="recurring-options" style="display: none;">
+            <h4>Récurrence (pour Télétravail récurrent)</h4>
+            ${createCheckboxGroup('recurrenceDays', 'Jours de récurrence', [
+                { label: 'Lundi', value: '1' },
+                { label: 'Mardi', value: '2' },
+                { label: 'Mercredi', value: '3' },
+                { label: 'Jeudi', value: '4' },
+                { label: 'Vendredi', 'value': '5' }
+            ], [], 'addRecurrenceDay_')}
+            ${createDatePicker('recurrenceEndDate', 'Fin de récurrence', endOfYear, true)}
+        </div>
+    `;
+
+    createAndShowModal('Ajouter un événement', content, 'Ajouter', 'addPlanningEvent()');
+
+    setTimeout(() => {
+        const eventTypeSelect = document.getElementById('eventTypeSelect');
+        if (eventTypeSelect) {
+            handleEventTypeChange(eventTypeSelect.value);
+        }
+    }, 50);
 }
 
+function handleEventTypeChange(selectedType) {
+    const recurrenceOptionsDiv = document.getElementById('recurrenceOptions');
+    const recurrenceEndDateInput = document.getElementById('recurrenceEndDate');
 
-async function savePlanningEvent() {
-    const personId = parseInt(document.getElementById('eventPerson').value);
-    const type = document.getElementById('eventType').value;
+    if (selectedType === 'telework_recurrent') {
+        recurrenceOptionsDiv.style.display = 'block';
+        if (recurrenceEndDateInput && !recurrenceEndDateInput.value) {
+            recurrenceEndDateInput.value = dayjs().endOf('year').format('YYYY-MM-DD');
+        }
+    } else {
+        recurrenceOptionsDiv.style.display = 'none';
+        if (recurrenceEndDateInput) recurrenceEndDateInput.value = '';
+        document.querySelectorAll('input[name="recurrenceDays"]').forEach(cb => cb.checked = false);
+    }
+}
+
+async function addPlanningEvent() {
+    const personId = document.getElementById('personSelect').value;
+    const eventType = document.getElementById('eventTypeSelect').value;
     const startDate = document.getElementById('eventStartDate').value;
-    let endDate = document.getElementById('eventEndDate').value;
-    const isRecurrent = document.getElementById('isRecurrent').checked;
+    const endDate = document.getElementById('eventEndDate').value;
 
-    if (!startDate) {
-        showToast("La date de début est requise.", "error");
-        return;
-    }
-    if (!endDate) {
-        endDate = startDate; // If end date is not provided, it's a single-day event
-    }
-
-    if (dayjs(startDate).isAfter(dayjs(endDate))) {
-        showToast("La date de début ne peut pas être après la date de fin.", "error");
+    if (!personId || !eventType || !startDate) {
+        showToast('Veuillez remplir tous les champs requis.', 'error');
         return;
     }
 
-    let recurrencePattern = null;
-    if (isRecurrent) {
-        const interval = parseInt(document.getElementById('recurrenceInterval').value);
-        const unit = document.getElementById('recurrenceUnit').value;
-        const daysOfWeek = Array.from(document.querySelectorAll('#recurrenceOptions input[type="checkbox"]:checked'))
-            .map(cb => parseInt(cb.value));
-        const until = document.getElementById('recurrenceUntil').value;
+    const person = people.find(p => p.id === personId);
+    if (!person) {
+        showToast('Personne sélectionnée introuvable.', 'error');
+        return;
+    }
 
-        if (unit === 'week' && daysOfWeek.length === 0) {
-            showToast("Veuillez sélectionner au moins un jour de la semaine pour la récurrence hebdomadaire.", "error");
+    const eventColor = EVENT_COLORS[eventType] || '#000000';
+
+    const generateEvent = (start, end, recurrenceGroupId = null) => {
+        const finalEnd = end ? dayjs(end).add(1, 'day').format('YYYY-MM-DD') : dayjs(start).add(1, 'day').format('YYYY-MM-DD');
+        const eventTypeDisplay = getEventTypeDisplayName(eventType);
+
+        return {
+            id: crypto.randomUUID(),
+            title: `${person.name} (${eventTypeDisplay})`,
+            start: start,
+            end: finalEnd,
+            personId: person.id,
+            type: eventType,
+            backgroundColor: eventColor,
+            borderColor: eventColor,
+            allDay: true,
+            recurrenceGroupId: recurrenceGroupId
+        };
+    };
+
+    let eventsToAdd = [];
+    if (eventType === 'telework_recurrent') {
+        const recurrenceDays = Array.from(document.querySelectorAll('input[name="recurrenceDays"]:checked')).map(cb => parseInt(cb.value));
+        const recurrenceEndDateInput = document.getElementById('recurrenceEndDate');
+        const recurrenceEndDate = recurrenceEndDateInput ? recurrenceEndDateInput.value : '';
+
+        const endRecurrenceDayjs = dayjs(recurrenceEndDate);
+        if (recurrenceDays.length === 0 || !recurrenceEndDate || !endRecurrenceDayjs.isValid()) {
+            showToast('Pour le télétravail récurrent, veuillez sélectionner les jours et fournir une date de fin de récurrence valide.', 'error');
             return;
         }
 
-        recurrencePattern = { interval, unit, daysOfWeek, until };
-    }
-
-    const newEvent = { personId, type, startDate, endDate, recurrent: isRecurrent, recurrencePattern };
-
-    try {
-        const id = await addData(STORE_EVENTS, newEvent);
-        newEvent.id = id;
-        allCalendarEvents.push(newEvent);
-
-        // If it's a recurrent event, generate instances for the calendar
-        if (isRecurrent) {
-            generateRecurrentEventInstances(newEvent);
+        const recurrenceGroupId = crypto.randomUUID();
+        let currentDay = dayjs(startDate);
+        
+        while (currentDay.isSameOrBefore(endRecurrenceDayjs, 'day')) {
+            if (recurrenceDays.includes(currentDay.day())) {
+                eventsToAdd.push(generateEvent(currentDay.format('YYYY-MM-DD'), currentDay.format('YYYY-MM-DD'), recurrenceGroupId));
+            }
+            currentDay = currentDay.add(1, 'day');
         }
-
-        renderCalendar();
-        closeModal();
-        showToast("Événement ajouté avec succès.", "success");
-    } catch (error) {
-        console.error("Erreur lors de l'enregistrement de l'événement:", error);
-        showToast("Erreur lors de l'enregistrement de l'événement.", "error");
-    }
-}
-
-function generateRecurrentEventInstances(originalEvent) {
-    // This function generates future instances for display purposes
-    // FullCalendar's rrule plugin would handle this automatically if used,
-    // but for manual display, we need to add them.
-    // However, for simplicity and performance, we let FullCalendar handle recurrence.
-    // The 'events' array passed to FullCalendar will contain the original recurrent event.
-    // FullCalendar itself will render the occurrences if 'rrule' field is present.
-    // Since we're not using rrule plugin directly, we just store the base event.
-    // The eventClick logic needs to handle the original event for details.
-}
-
-function editPlanningEvent(id) {
-    const eventToEdit = allCalendarEvents.find(e => e.id === id);
-    if (!eventToEdit) return;
-
-    const peopleOptions = people.map(p => `<option value="${p.id}" ${p.id === eventToEdit.personId ? 'selected' : ''}>${p.name}</option>`).join('');
-    const eventTypeOptions = Object.keys(EVENT_COLORS).map(type => `<option value="${type}" ${type === eventToEdit.type ? 'selected' : ''}>${type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>`).join('');
-
-    const isRecurrentChecked = eventToEdit.recurrent ? 'checked' : '';
-    const recurrenceOptionsStyle = eventToEdit.recurrent ? 'display:block;' : 'display:none;';
-
-    let recurrenceInterval = eventToEdit.recurrencePattern?.interval || 1;
-    let recurrenceUnit = eventToEdit.recurrencePattern?.unit || 'day';
-    let recurrenceUntil = eventToEdit.recurrencePattern?.until || '';
-    let daysOfWeekCheckboxes = '';
-    for (let i = 0; i < 7; i++) {
-        const isChecked = eventToEdit.recurrencePattern?.daysOfWeek?.includes(i) ? 'checked' : '';
-        const dayNames = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-        daysOfWeekCheckboxes += `<input type="checkbox" id="editRecDay${i}" value="${i}" ${isChecked}><label for="editRecDay${i}">${dayNames[i]}</label>`;
+    } else {
+        eventsToAdd.push(generateEvent(startDate, endDate));
     }
 
-
-    showModal(`
-        <h2>Modifier l'événement</h2>
-        <div class="form-group">
-            <label for="editEventPerson">Personne :</label>
-            <select id="editEventPerson">${peopleOptions}</select>
-        </div>
-        <div class="form-group">
-            <label for="editEventType">Type d'événement :</label>
-            <select id="editEventType">${eventTypeOptions}</select>
-        </div>
-        <div class="form-group">
-            <label for="editEventStartDate">Date de début :</label>
-            <input type="date" id="editEventStartDate" value="${eventToEdit.startDate}" required>
-        </div>
-        <div class="form-group">
-            <label for="editEventEndDate">Date de fin :</label>
-            <input type="date" id="editEventEndDate" value="${eventToEdit.endDate || ''}">
-        </div>
-        <div class="form-group">
-            <input type="checkbox" id="editIsRecurrent" ${isRecurrentChecked}>
-            <label for="editIsRecurrent">Événement récurrent</label>
-        </div>
-        <div id="editRecurrenceOptions" style="${recurrenceOptionsStyle}">
-            <div class="form-group">
-                <label for="editRecurrenceInterval">Fréquence :</label>
-                <input type="number" id="editRecurrenceInterval" value="${recurrenceInterval}" min="1">
-                <select id="editRecurrenceUnit">
-                    <option value="day" ${recurrenceUnit === 'day' ? 'selected' : ''}>jour(s)</option>
-                    <option value="week" ${recurrenceUnit === 'week' ? 'selected' : ''}>semaine(s)</option>
-                    <option value="month" ${recurrenceUnit === 'month' ? 'selected' : ''}>mois</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Jours de la semaine (pour récurrence hebdomadaire) :</label>
-                <div class="checkbox-group">
-                    ${daysOfWeekCheckboxes}
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="editRecurrenceUntil">Répéter jusqu'à (date de fin optionnelle) :</label>
-                <input type="date" id="editRecurrenceUntil" value="${recurrenceUntil}">
-            </div>
-        </div>
-        <div class="modal-actions">
-            <button class="button-primary" onclick="saveEditedPlanningEvent(${id})">Sauvegarder</button>
-            <button class="button-secondary" onclick="closeModal()">Annuler</button>
-        </div>
-    `);
-
-    document.getElementById('editIsRecurrent').addEventListener('change', function() {
-        document.getElementById('editRecurrenceOptions').style.display = this.checked ? 'block' : 'none';
-    });
+    for (const event of eventsToAdd) {
+        allCalendarEvents.push(event);
+    }
+    await saveCalendarEvents();
+    updateCalendarEventsDisplay();
+    closeModal();
+    showToast(`Événement(s) pour ${person.name} ajouté(s) !`, 'success');
 }
 
-async function saveEditedPlanningEvent(id) {
-    const personId = parseInt(document.getElementById('editEventPerson').value);
-    const type = document.getElementById('editEventType').value;
+function showEditPlanningEventModal(eventId) {
+    const event = allCalendarEvents.find(e => e.id === eventId);
+    if (!event) {
+        showToast("Événement introuvable.", "error");
+        return;
+    }
+
+    const personOptions = people.map(p => ({ value: p.id, label: p.name }));
+    const eventTypeOptions = [
+        { value: 'permanence', label: 'Permanence' },
+        { value: 'permanence_backup', label: 'Permanence (Backup)' },
+        { value: 'telework_punctual', label: 'Télétravail (ponctuel)' },
+        { value: 'telework_recurrent', label: 'Télétravail (récurrent)' },
+        { value: 'leave', label: 'Congé' }
+    ];
+
+    const startDate = event.start ? dayjs(event.start).format('YYYY-MM-DD') : '';
+    let endDate = '';
+    if (event.end) {
+        const endDayjs = dayjs(event.end);
+        endDate = endDayjs.subtract(1, 'day').format('YYYY-MM-DD');
+    }
+
+    let deleteButtonsHtml = `<button class="button-danger" onclick="confirmDeleteEvent('${event.id}')">Supprimer cet événement</button>`;
+    if (event.recurrenceGroupId) {
+        deleteButtonsHtml += `<button class="button-danger ml-2" onclick="confirmDeleteRecurrenceSeries('${event.recurrenceGroupId}')">Supprimer la série récurrente</button>`;
+    }
+
+    const content = `
+        ${createSelectInput('editPersonSelect', 'Personne', personOptions, event.personId, true)}
+        ${createSelectInput('editEventTypeSelect', 'Type d\'événement', eventTypeOptions, event.type, true)}
+        ${createDatePicker('editEventStartDate', 'Date de début', startDate, true)}
+        ${createDatePicker('editEventEndDate', 'Date de fin (optionnel)', endDate)}
+        
+        <div class="form-group button-group">
+            ${deleteButtonsHtml}
+        </div>
+    `;
+
+    createAndShowModal('Modifier un événement', content, 'Sauvegarder', `editPlanningEvent('${event.id}')`);
+}
+
+async function editPlanningEvent(eventId) {
+    const personId = document.getElementById('editPersonSelect').value;
+    const eventType = document.getElementById('editEventTypeSelect').value;
     const startDate = document.getElementById('editEventStartDate').value;
-    let endDate = document.getElementById('editEventEndDate').value;
-    const isRecurrent = document.getElementById('editIsRecurrent').checked;
+    const endDate = document.getElementById('editEventEndDate').value;
 
-    if (!startDate) {
-        showToast("La date de début est requise.", "error");
-        return;
-    }
-    if (!endDate) {
-        endDate = startDate;
-    }
-    if (dayjs(startDate).isAfter(dayjs(endDate))) {
-        showToast("La date de début ne peut pas être après la date de fin.", "error");
+    if (!personId || !eventType || !startDate) {
+        showToast('Veuillez remplir tous les champs requis.', 'error');
         return;
     }
 
-    let recurrencePattern = null;
-    if (isRecurrent) {
-        const interval = parseInt(document.getElementById('editRecurrenceInterval').value);
-        const unit = document.getElementById('editRecurrenceUnit').value;
-        const daysOfWeek = Array.from(document.querySelectorAll('#editRecurrenceOptions input[type="checkbox"]:checked'))
-            .map(cb => parseInt(cb.value));
-        const until = document.getElementById('editRecurrenceUntil').value;
-
-        if (unit === 'week' && daysOfWeek.length === 0) {
-            showToast("Veuillez sélectionner au moins un jour de la semaine pour la récurrence hebdomadaire.", "error");
-            return;
-        }
-        recurrencePattern = { interval, unit, daysOfWeek, until };
+    const eventIndex = allCalendarEvents.findIndex(e => e.id === eventId);
+    if (eventIndex === -1) {
+        showToast("Événement introuvable pour modification.", "error");
+        return;
     }
 
-    const eventIndex = allCalendarEvents.findIndex(e => e.id === id);
-    if (eventIndex > -1) {
-        allCalendarEvents[eventIndex] = {
-            id,
-            personId,
-            type,
-            startDate,
-            endDate,
-            recurrent: isRecurrent,
-            recurrencePattern
-        };
-
-        try {
-            await updateData(STORE_EVENTS, allCalendarEvents[eventIndex]);
-            renderCalendar();
-            closeModal();
-            showToast("Événement mis à jour avec succès.", "success");
-        } catch (error) {
-            console.error("Erreur lors de la mise à jour de l'événement:", error);
-            showToast("Erreur lors de la mise à jour de l'événement.", "error");
-        }
+    const person = people.find(p => p.id === personId);
+    if (!person) {
+        showToast('Personne sélectionnée introuvable.', 'error');
+        return;
     }
+
+    const eventColor = EVENT_COLORS[eventType] || '#000000';
+    const eventTypeDisplay = getEventTypeDisplayName(eventType);
+
+    const finalEnd = endDate ? dayjs(endDate).add(1, 'day').format('YYYY-MM-DD') : dayjs(startDate).add(1, 'day').format('YYYY-MM-DD');
+
+    const updatedEvent = {
+        ...allCalendarEvents[eventIndex],
+        title: `${person.name} (${eventTypeDisplay})`,
+        start: startDate,
+        end: finalEnd,
+        personId: person.id,
+        type: eventType,
+        backgroundColor: eventColor,
+        borderColor: eventColor,
+        allDay: true
+    };
+
+    allCalendarEvents[eventIndex] = updatedEvent;
+    await saveCalendarEvents();
+    updateCalendarEventsDisplay();
+    closeModal();
+    showToast('Événement modifié avec succès !', 'success');
 }
 
-function confirmDeleteEvent(id) {
-    showModal(`
-        <h2>Confirmer la suppression</h2>
-        <p>Êtes-vous sûr de vouloir supprimer cet événement ?</p>
-        <div class="modal-actions">
-            <button class="button-danger" onclick="deleteEvent(${id})">Supprimer</button>
-            <button class="button-secondary" onclick="closeModal()">Annuler</button>
-        </div>
-    `);
+function confirmDeleteEvent(eventId) {
+    createAndShowModal(
+        'Confirmer la suppression',
+        `<p>Êtes-vous sûr de vouloir supprimer cet événement ?</p>`,
+        'Supprimer',
+        `deleteEvent('${eventId}')`,
+        'Annuler'
+    );
 }
 
-async function deleteEvent(id) {
-    try {
-        await deleteData(STORE_EVENTS, id);
-        allCalendarEvents = allCalendarEvents.filter(e => e.id !== id);
-        renderCalendar();
+async function deleteEvent(eventId) {
+    const initialEventCount = allCalendarEvents.length;
+    allCalendarEvents = allCalendarEvents.filter(e => e.id !== eventId);
+    if (allCalendarEvents.length < initialEventCount) {
+        await saveCalendarEvents();
+        updateCalendarEventsDisplay();
         closeModal();
-        showToast("Événement supprimé avec succès.", "success");
-    } catch (error) {
-        console.error("Erreur lors de la suppression de l'événement:", error);
-        showToast("Erreur lors de la suppression de l'événement.", "error");
+        showToast('Événement supprimé !', 'success');
+    } else {
+        showToast("Erreur: Événement introuvable pour suppression.", "error");
     }
 }
 
-// --- Vérification des Permanences ---
-function checkPermanenceAvailability() {
-    const view = calendar.view;
-    const startDate = dayjs(view.currentStart);
-    const endDate = dayjs(view.currentEnd);
+function confirmDeleteRecurrenceSeries(recurrenceGroupId) {
+    createAndShowModal(
+        'Confirmer la suppression de la série',
+        `<p>Êtes-vous sûr de vouloir supprimer toute la série d'événements récurrents ?</p>`,
+        'Supprimer la série',
+        `deleteRecurrenceSeries('${recurrenceGroupId}')`,
+        'Annuler'
+    );
+}
 
-    const weekDays = [1, 2, 3, 4, 5]; // Lundi=1 à Vendredi=5
-    let missingPermanences = [];
-    let multiplePermanences = [];
-    let backupNeeded = [];
-
-    // Reset warnings
-    const calendarEl = document.getElementById('calendar');
-    calendarEl.classList.remove('warning-missing-permanence', 'warning-multiple-permanence', 'warning-backup-needed');
-
-    for (let d = startDate; d.isSameOrBefore(endDate, 'day'); d = d.add(1, 'day')) {
-        if (!weekDays.includes(d.weekday())) { // Skip weekends
-            continue;
-        }
-
-        const formattedDate = d.format('YYYY-MM-DD');
-        let permanencesOnDay = 0;
-        let backupsOnDay = 0;
-
-        allCalendarEvents.forEach(event => {
-            const eventStart = dayjs(event.startDate);
-            const eventEnd = dayjs(event.endDate);
-
-            if (event.recurrent) {
-                // Handle recurrent events
-                const recurrencePattern = event.recurrencePattern;
-                let currentRecurrenceDate = dayjs(event.startDate);
-                while (currentRecurrenceDate.isSameOrBefore(eventEnd) &&
-                       (!recurrencePattern.until || currentRecurrenceDate.isSameOrBefore(dayjs(recurrencePattern.until)))) {
-
-                    if (recurrencePattern.unit === 'week' && recurrencePattern.daysOfWeek.includes(currentRecurrenceDate.weekday())) {
-                        if (currentRecurrenceDate.isSame(d, 'day')) {
-                            if (event.type === 'permanence') permanencesOnDay++;
-                            if (event.type === 'permanence_backup') backupsOnDay++;
-                        }
-                    } else if (currentRecurrenceDate.isSame(d, 'day')) { // for day/month recurrence
-                        if (event.type === 'permanence') permanencesOnDay++;
-                        if (event.type === 'permanence_backup') backupsOnDay++;
-                    }
-
-                    if (currentRecurrenceDate.isSameOrBefore(d, 'day') && d.isSameOrBefore(eventEnd, 'day')) {
-                        // For non-weekly recurrent events, also check if the main event span covers the day
-                        if (recurrencePattern.unit === 'day' || recurrencePattern.unit === 'month') {
-                            if (event.type === 'permanence') permanencesOnDay++;
-                            if (event.type === 'permanence_backup') backupsOnDay++;
-                        }
-                    }
-                    currentRecurrenceDate = currentRecurrenceDate.add(recurrencePattern.interval, recurrencePattern.unit);
-                }
-            } else {
-                // Handle non-recurrent events
-                if (d.isBetween(eventStart, eventEnd, 'day', '[]')) { // [] means inclusive
-                    if (event.type === 'permanence') permanencesOnDay++;
-                    if (event.type === 'permanence_backup') backupsOnDay++;
-                }
-            }
-
-            // For non-permanence events (leave, telework), ensure person is not counted for permanence
-            if (d.isBetween(eventStart, eventEnd, 'day', '[]') &&
-                (event.type === 'leave' || event.type.startsWith('telework'))) {
-                // If a person is on leave or teleworking, they cannot be counted for permanence
-                // We need to ensure that if a permanence is scheduled for them, it's flagged as invalid
-                // This logic is tricky with the current simple counting.
-                // A more robust check would be to identify who is *available* for permanence.
-            }
-        });
-
-        // Refined logic for presence (simplified for example, might need more specific event conflict checks)
-        const availablePeopleForPermanence = people.filter(person => {
-            // Check if this person has any leave or telework event on this specific day
-            const hasConflictingEvent = allCalendarEvents.some(event => {
-                if (event.personId !== person.id) return false;
-
-                const eventStart = dayjs(event.startDate);
-                const eventEnd = dayjs(event.endDate);
-
-                if (event.recurrent) {
-                    let currentRecurrenceDate = dayjs(event.startDate);
-                    while (currentRecurrenceDate.isSameOrBefore(eventEnd) &&
-                           (!event.recurrencePattern.until || currentRecurrenceDate.isSameOrBefore(dayjs(event.recurrencePattern.until)))) {
-
-                        if (event.recurrencePattern.unit === 'week' && event.recurrencePattern.daysOfWeek.includes(currentRecurrenceDate.weekday())) {
-                            if (currentRecurrenceDate.isSame(d, 'day')) {
-                                return event.type === 'leave' || event.type.startsWith('telework');
-                            }
-                        } else if (currentRecurrenceDate.isSame(d, 'day')) {
-                             return event.type === 'leave' || event.type.startsWith('telework');
-                        }
-                        currentRecurrenceDate = currentRecurrenceDate.add(event.recurrencePattern.interval, event.recurrencePattern.unit);
-                    }
-                    return false;
-                } else {
-                    return d.isBetween(eventStart, eventEnd, 'day', '[]') && (event.type === 'leave' || event.type.startsWith('telework'));
-                }
-            });
-            return !hasConflictingEvent; // Person is available if no conflicting events
-        });
-
-        const actualPermanences = allCalendarEvents.filter(event => {
-            const eventStart = dayjs(event.startDate);
-            const eventEnd = dayjs(event.endDate);
-
-            // Check if the event is active on this day (recurrent or not)
-            let isActive = false;
-            if (event.recurrent) {
-                let currentRecurrenceDate = dayjs(event.startDate);
-                while (currentRecurrenceDate.isSameOrBefore(eventEnd) &&
-                       (!event.recurrencePattern.until || currentRecurrenceDate.isSameOrBefore(dayjs(event.recurrencePattern.until)))) {
-                    if (currentRecurrenceDate.isSame(d, 'day') &&
-                        (event.recurrencePattern.unit !== 'week' || event.recurrencePattern.daysOfWeek.includes(currentRecurrenceDate.weekday()))) {
-                        isActive = true;
-                        break;
-                    }
-                    currentRecurrenceDate = currentRecurrenceDate.add(event.recurrencePattern.interval, event.recurrencePattern.unit);
-                }
-            } else {
-                isActive = d.isBetween(eventStart, eventEnd, 'day', '[]');
-            }
-
-            // If the event is active and it's a permanence, and the person is available
-            return isActive && event.type === 'permanence' && availablePeopleForPermanence.some(p => p.id === event.personId);
-        }).length;
-
-        const actualBackups = allCalendarEvents.filter(event => {
-            const eventStart = dayjs(event.startDate);
-            const eventEnd = dayjs(event.endDate);
-
-            let isActive = false;
-            if (event.recurrent) {
-                let currentRecurrenceDate = dayjs(event.startDate);
-                while (currentRecurrenceDate.isSameOrBefore(eventEnd) &&
-                       (!event.recurrencePattern.until || currentRecurrenceDate.isSameOrBefore(dayjs(event.recurrencePattern.until)))) {
-                    if (currentRecurrenceDate.isSame(d, 'day') &&
-                        (event.recurrencePattern.unit !== 'week' || event.recurrencePattern.daysOfWeek.includes(currentRecurrenceDate.weekday()))) {
-                        isActive = true;
-                        break;
-                    }
-                    currentRecurrenceDate = currentRecurrenceDate.add(event.recurrencePattern.interval, event.recurrencePattern.unit);
-                }
-            } else {
-                isActive = d.isBetween(eventStart, eventEnd, 'day', '[]');
-            }
-
-            return isActive && event.type === 'permanence_backup' && availablePeopleForPermanence.some(p => p.id === event.personId);
-        }).length;
-
-
-        if (actualPermanences === 0) {
-            missingPermanences.push(formattedDate);
-        } else if (actualPermanences > 1) {
-            multiplePermanences.push(formattedDate);
-        }
-
-        if (actualPermanences === 1 && actualBackups === 0) {
-            backupNeeded.push(formattedDate);
-        }
+async function deleteRecurrenceSeries(recurrenceGroupId) {
+    const initialEventCount = allCalendarEvents.length;
+    allCalendarEvents = allCalendarEvents.filter(e => e.recurrenceGroupId !== recurrenceGroupId);
+    
+    if (allCalendarEvents.length < initialEventCount) {
+        await saveCalendarEvents();
+        updateCalendarEventsDisplay();
+        closeModal();
+        showToast('Série d\'événements récurrents supprimée !', 'success');
+    } else {
+        showToast("Aucun événement trouvé pour cette série récurrente.", "info");
     }
-
-    displayPermanenceWarnings(missingPermanences, multiplePermanences, backupNeeded);
 }
 
 
-function displayPermanenceWarnings(missing, multiple, backup) {
-    const warningContainer = document.getElementById('permanenceWarnings');
-    warningContainer.innerHTML = '';
-    let hasWarnings = false;
-
-    const calendarEl = document.getElementById('calendar');
-    calendarEl.classList.remove('warning-missing-permanence', 'warning-multiple-permanence', 'warning-backup-needed');
-
-    if (missing.length > 0) {
-        warningContainer.innerHTML += `<p class="warning-message error-message"><i class="fas fa-exclamation-triangle"></i> Permanence manquante le(s) : ${missing.join(', ')}</p>`;
-        calendarEl.classList.add('warning-missing-permanence');
-        hasWarnings = true;
-    }
-    if (multiple.length > 0) {
-        warningContainer.innerHTML += `<p class="warning-message info-message"><i class="fas fa-info-circle"></i> Plusieurs permanences le(s) : ${multiple.join(', ')}</p>`;
-        calendarEl.classList.add('warning-multiple-permanence');
-        hasWarnings = true;
-    }
-    if (backup.length > 0) {
-        warningContainer.innerHTML += `<p class="warning-message info-message"><i class="fas fa-info-circle"></i> Backup de permanence nécessaire le(s) : ${backup.join(', ')}</p>`;
-        calendarEl.classList.add('warning-backup-needed');
-        hasWarnings = true;
-    }
-
-    warningContainer.style.display = hasWarnings ? 'block' : 'none';
-}
-
-
-// --- Exportation PDF ---
-async function exportPdf() {
-    showToast("Préparation de l'exportation PDF...", "info");
-
-    const start = calendar.view.currentStart;
-    const end = calendar.view.currentEnd;
-
-    let pdfContentContainer; // Déclare la variable ici pour qu'elle soit accessible dans le bloc finally
-
+// --- Exportation de données (adapté pour IndexedDB) ---
+async function exportDataToJson() {
     try {
-        pdfContentContainer = createPdfContent(start, end);
+        const exportedPeople = await getAllItems(STORE_PEOPLE);
+        const exportedEvents = await getAllItems(STORE_EVENTS);
 
-        // Ajout d'un délai pour s'assurer que le DOM est prêt et rendu avant la capture
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4'); // Portrait, mm, A4
-        const imgWidth = 210; // Largeur A4 en mm
-        // let pageHeight = 297; // Hauteur A4 en mm (non directement utilisée pour l'addImage)
-
-        const elementsToPrint = document.querySelectorAll('.pdf-page');
-        const totalPages = elementsToPrint.length; // Devrait être 1 si le nettoyage est efficace
-
-        let currentPage = 0;
-
-        // Fonction pour ajouter l'en-tête et le pied de page
-        const addHeaderFooter = (doc, pageNumber, totalPages) => {
-            doc.setFontSize(10);
-            doc.setTextColor(100); // Couleur grise pour l'en-tête/pied de page
-
-            // En-tête
-            doc.text(`Planning des Permanences: ${dayjs(start).format('DD/MM/YYYY')} - ${dayjs(end).format('DD/MM/YYYY')}`, doc.internal.pageSize.getWidth() / 2, 10, { align: 'center' });
-
-            // Pied de page
-            const pageCountText = `Page ${pageNumber} / ${totalPages}`;
-            doc.text(pageCountText, doc.internal.pageSize.getWidth() - 20, doc.internal.pageSize.getHeight() - 10, { align: 'right' });
-
-            // Informations de l'application
-            doc.text(`${APP_NAME} ${APP_VERSION}`, 20, doc.internal.pageSize.getHeight() - 10);
+        const data = {
+            people: exportedPeople,
+            events: exportedEvents
         };
-
-        for (let i = 0; i < elementsToPrint.length; i++) {
-            const element = elementsToPrint[i];
-            currentPage++;
-
-            // Ajoute une nouvelle page si ce n'est pas le premier élément
-            if (i > 0) {
-                doc.addPage();
-            }
-
-            // Ajoute l'en-tête et le pied de page pour la page actuelle
-            addHeaderFooter(doc, currentPage, totalPages);
-
-            await html2canvas(element, {
-                scale: 2, // Échelle plus élevée pour une meilleure qualité
-                useCORS: true, // Important pour les images, si présentes
-                windowWidth: element.scrollWidth, // Capture la largeur complète du contenu
-                windowHeight: element.scrollHeight, // Capture la hauteur complète du contenu
-                allowTaint: true,
-            }).then(canvas => {
-                const imgData = canvas.toDataURL('image/png');
-                // Calcule la hauteur de l'image basée sur le ratio d'aspect
-                const imgHeight = canvas.height * imgWidth / canvas.width;
-
-                doc.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight); // Ajoute l'image au PDF
-            });
-        }
-
-        // Sauvegarde le PDF
-        const pdfName = `planning_permanences_${dayjs(start).format('YYYY-MM-DD')}_${dayjs(end).format('YYYY-MM-DD')}.pdf`;
-        doc.save(pdfName);
-
-        showToast("Le planning a été exporté en PDF avec succès !", "success");
-
-    } catch (error) {
-        console.error("Erreur lors de l'exportation PDF:", error);
-        showToast("Une erreur est survenue lors de l'exportation PDF. Veuillez vérifier la console pour plus de détails.", "error");
-    } finally {
-        // Garantir que le conteneur temporaire est toujours supprimé, même en cas d'erreur
-        if (pdfContentContainer && document.body.contains(pdfContentContainer)) {
-            document.body.removeChild(pdfContentContainer);
-        }
-    }
-}
-
-// Fonction pour créer le contenu HTML destiné au PDF
-function createPdfContent(startDate, endDate) {
-    const container = document.createElement('div');
-    container.className = 'pdf-container';
-    container.style.width = '210mm'; // Largeur A4
-    container.style.minHeight = '297mm'; // Hauteur A4, assure au moins une page
-    container.style.padding = '10mm'; // Marge pour l'impression
-    container.style.boxSizing = 'border-box';
-    container.style.backgroundColor = 'white';
-    container.style.color = 'black';
-    container.style.fontSize = '10pt';
-    container.style.position = 'absolute';
-    container.style.left = '-9999px'; // Cache l'élément hors de l'écran
-    container.style.top = '-9999px'; // Cache l'élément hors de l'écran
-    container.style.zIndex = '-1';
-    container.classList.add('pdf-page'); // Ajoute la classe pour la détection des pages
-
-    // Ajout de l'en-tête (sera remplacé par jsPDF header/footer)
-    // const headerHtml = `
-    //     <h1 style="font-size: 14pt; text-align: center; margin-bottom: 20px;">Planning des Permanences: ${dayjs(startDate).format('DD/MM/YYYY')} - ${dayjs(endDate).format('DD/MM/YYYY')}</h1>
-    // `;
-    // container.innerHTML += headerHtml;
-
-    const currentCalendarContent = document.getElementById('calendar').outerHTML;
-    container.innerHTML += currentCalendarContent;
-
-    document.body.appendChild(container);
-    return container;
-}
-
-
-// --- Exportation PNG ---
-async function exportPng() {
-    showToast("Préparation de l'exportation PNG...", "info");
-
-    const element = document.getElementById('calendar'); // Capture le calendrier
-
-    try {
-        const canvas = await html2canvas(element, {
-            scale: 2, // Échelle plus élevée pour une meilleure qualité
-            useCORS: true,
-            windowWidth: element.scrollWidth,
-            windowHeight: element.scrollHeight,
-            allowTaint: true,
-        });
-
-        const imgData = canvas.toDataURL('image/png');
+        const jsonString = JSON.stringify(data, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = imgData;
-        a.download = `planning_permanences_${dayjs().format('YYYY-MM-DD_HHmmss')}.png`;
+        a.href = url;
+        a.download = `electri-cal_data_${dayjs().format('YYYY-MM-DD_HHmmss')}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Données exportées en JSON !', 'success');
+    } catch (error) {
+        console.error("Erreur lors de l'exportation des données JSON:", error);
+        showToast("Erreur lors de l'exportation des données JSON.", "error");
+    }
+}
 
-        showToast("Le planning a été exporté en PNG avec succès !", "success");
+function showImportModal() {
+    const content = `
+        ${createTextArea('importJsonData', 'Collez vos données JSON ici', '', 'Collez le contenu de votre fichier JSON ici...', 10)}
+        <p>Attention: L'importation écrasera les données existantes.</p>
+    `;
+    createAndShowModal(
+        'Importer des données JSON',
+        content,
+        'Importer',
+        'importDataFromJson()',
+        'Annuler'
+    );
+}
+
+async function importDataFromJson() {
+    const jsonData = document.getElementById('importJsonData').value;
+    if (!jsonData) {
+        showToast('Veuillez coller les données JSON.', 'error');
+        return;
+    }
+    try {
+        const parsedData = JSON.parse(jsonData);
+        
+        await clearStore(STORE_PEOPLE);
+        await clearStore(STORE_EVENTS);
+        
+        if (parsedData.people && Array.isArray(parsedData.people)) {
+            people = parsedData.people.map(p => ({
+                ...p,
+                isVisible: p.isVisible !== undefined ? p.isVisible : true
+            }));
+            for (const person of people) {
+                await addItem(STORE_PEOPLE, person);
+            }
+            renderPeopleList();
+            showToast('Personnes importées avec succès !', 'success');
+        } else {
+            people = [];
+        }
+
+        if (parsedData.events && Array.isArray(parsedData.events)) {
+            allCalendarEvents = parsedData.events.map(event => {
+                const person = people.find(p => p.id === event.personId);
+                const eventColor = EVENT_COLORS[event.type] || '#000000';
+                const eventTypeDisplay = getEventTypeDisplayName(event.type);
+                return {
+                    ...event,
+                    title: person ? `${person.name} (${eventTypeDisplay})` : `[Inconnu] (${eventTypeDisplay})`,
+                    backgroundColor: eventColor,
+                    borderColor: eventColor,
+                    allDay: true
+                };
+            });
+            for (const event of allCalendarEvents) {
+                await addItem(STORE_EVENTS, event);
+            }
+            updateCalendarEventsDisplay();
+            showToast('Événements importés avec succès !', 'success');
+        } else {
+            allCalendarEvents = [];
+        }
+        
+        if (!parsedData.people && !parsedData.events) {
+            showToast('Le fichier JSON ne contient pas de données valides (personnes ou événements).', 'error');
+        }
+        closeModal();
+    } catch (e) {
+        console.error('Erreur lors de l\'importation JSON:', e);
+        showToast('Erreur lors de l\'importation JSON. Format invalide.', 'error');
+    }
+}
+
+// MODIFIÉ : Fonction pour afficher la modale des options d'export (spécifique au nouveau PDF)
+function showExportOptionsModal(exportType) {
+    if (people.length === 0) {
+        showToast("Veuillez ajouter au moins une personne d'abord.", "error");
+        return;
+    }
+    if (allCalendarEvents.length === 0) {
+        showToast("Aucun événement à exporter. Veuillez ajouter des événements au calendrier.", "info");
+        return;
+    }
+
+    // Valeurs par défaut pour les dates (mois courant)
+    const defaultStartDate = dayjs().startOf('month').format('YYYY-MM-DD');
+    const defaultEndDate = dayjs().endOf('month').format('YYYY-MM-DD');
+
+
+    const content = `
+        <p>Génère un PDF listant les permanences par semaine sous forme de tableau (du Lundi au Vendredi).</p>
+        ${createDatePicker('pdfExportStartDate', 'Date de début de la période', defaultStartDate, true)}
+        ${createDatePicker('pdfExportEndDate', 'Date de fin de la période', defaultEndDate, true)}
+    `;
+
+    const buttons = [];
+    // Le bouton appelle maintenant la nouvelle fonction qui prépare les données avant de générer le PDF
+    buttons.push({ text: 'Générer le PDF', onclick: `preparePdfDataAndGeneratePdf()`, class: 'button-primary' });
+    buttons.push({ text: 'Annuler', onclick: 'closeModal()', class: 'button-secondary' });
+
+    showModal('Exporter le planning des permanences (PDF)', content, buttons); 
+}
+
+// MODIFIÉ : Prépare les données pour le PDF dans IndexedDB avant de générer le PDF
+// Inclut maintenant tous les jours de la semaine
+async function preparePdfDataAndGeneratePdf() {
+    closeModal(); // Ferme la modale
+
+    const startDateStr = document.getElementById('pdfExportStartDate').value;
+    const endDateStr = document.getElementById('pdfExportEndDate').value;
+
+    const startDate = dayjs(startDateStr);
+    const endDate = dayjs(endDateStr);
+
+    if (!startDate.isValid() || !endDate.isValid() || startDate.isAfter(endDate)) {
+        showToast("Veuillez sélectionner une période de dates valide pour l'export PDF.", "error");
+        return;
+    }
+
+    showToast("Préparation du PDF en cours... Veuillez patienter. ⏳", "info", 0, true); // Toast non-dissipable avec spinner
+
+    try {
+        await clearStore(STORE_PDF_GENERATION); // Nettoie le store temporaire
+
+        // Agrégation des données par jour (incluant tous les jours de la semaine)
+        const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: new Set(), permanence_backup: new Set() } }
+        let tempDate = dayjs(startDate);
+        while (tempDate.isSameOrBefore(endDate, 'day')) {
+            dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), permanence_backup: new Set() };
+            tempDate = tempDate.add(1, 'day');
+        }
+
+        allCalendarEvents.forEach(event => {
+            if (event.type !== 'permanence' && event.type !== 'permanence_backup') {
+                return;
+            }
+
+            const person = people.find(p => p.id === event.personId);
+            if (!person) return; // Personne introuvable
+
+            const eventStartDate = dayjs(event.start);
+            // FullCalendar end date is exclusive, subtract 1 day for inclusive comparison
+            const eventEndDate = dayjs(event.end).subtract(1, 'day'); 
+
+            let day = dayjs.max(eventStartDate, startDate);
+            let loopEndDate = dayjs.min(eventEndDate, endDate);
+
+            while (day.isSameOrBefore(loopEndDate, 'day')) {
+                const dateKey = day.format('YYYY-MM-DD');
+                if (dailyPermanences[dateKey]) { // S'assurer que le jour est dans la période d'export collectée
+                    if (event.type === 'permanence') {
+                        dailyPermanences[dateKey].permanence.add(person.name);
+                    } else if (event.type === 'permanence_backup') {
+                        dailyPermanences[dateKey].permanence_backup.add(person.name);
+                    }
+                }
+                day = day.add(1, 'day');
+            }
+        });
+
+        // Stocker les données formatées dans le store temporaire
+        const orderedDates = Object.keys(dailyPermanences).sort();
+        for (const dateKey of orderedDates) {
+            const dayData = dailyPermanences[dateKey];
+            const dayjsObj = dayjs(dateKey);
+            
+            // Forcer la locale française pour le formatage du nom du jour
+            const formattedDayOfWeek = dayjsObj.locale('fr').format('ddd DD/MM'); // Ex: "Lun 24/06"
+            const isWeekend = (dayjsObj.day() === 0 || dayjsObj.day() === 6); // Dimanche=0, Samedi=6
+
+            await putItem(STORE_PDF_GENERATION, {
+                date: dateKey, // KeyPath
+                dayOfWeekFr: formattedDayOfWeek,
+                permanenceNames: Array.from(dayData.permanence).join(', '),
+                backupNames: Array.from(dayData.permanence_backup).join(', '),
+                isWeekend: isWeekend
+            });
+        }
+        
+        // Une fois les données préparées, générer le PDF
+        await generatePermanencePdfTable(startDate, endDate);
 
     } catch (error) {
-        console.error("Erreur lors de l'exportation PNG:", error);
-        showToast("Une erreur est survenue lors de l'exportation PNG.", "error");
+        console.error("Erreur lors de la préparation des données PDF:", error);
+        showToast("Erreur lors de la préparation du PDF.", "error", 5000);
+    } finally {
+        hideToast(); // Masque le toast de chargement
     }
 }
 
-
-// --- Import/Export JSON ---
-function exportJson() {
-    const data = {
-        people: people,
-        events: allCalendarEvents
-    };
-    const jsonString = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `electri-cal_data_${dayjs().format('YYYY-MM-DD_HHmmss')}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-
-    showToast("Données exportées en JSON.", "success");
-}
-
-function importJson() {
-    showModal(`
-        <h2>Importer des données JSON</h2>
-        <p>Attention : L'importation écrasera les données actuelles.</p>
-        <div class="form-group">
-            <input type="file" id="jsonFile" accept=".json">
-        </div>
-        <div class="modal-actions">
-            <button class="button-primary" onclick="loadJsonFile()">Importer</button>
-            <button class="button-secondary" onclick="closeModal()">Annuler</button>
-        </div>
-    `);
-}
-
-async function loadJsonFile() {
-    const fileInput = document.getElementById('jsonFile');
-    const file = fileInput.files[0];
-
-    if (!file) {
-        showToast("Veuillez sélectionner un fichier JSON.", "error");
+// MODIFIÉ : Fonction pour générer le PDF du planning des permanences en tableau
+// Elle lit maintenant les données pré-formatées de IndexedDB et gère tous les jours
+async function generatePermanencePdfTable(startDate, endDate) {
+    if (typeof jspdf === 'undefined') {
+        showToast("La bibliothèque jsPDF n'est pas chargée. L'export PDF est impossible.", "error", 5000);
+        console.error("jsPDF is not loaded. Make sure the script is included.");
         return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-        try {
-            const data = JSON.parse(event.target.result);
-            if (data.people && data.events) {
-                // Clear existing data
-                await clearStore(STORE_PEOPLE);
-                await clearStore(STORE_EVENTS);
+    const doc = new jspdf.jsPDF('l', 'mm', 'a4'); // 'l' pour paysage
+    doc.setFont('helvetica'); // Use a standard font
 
-                // Add new data
-                for (const person of data.people) {
-                    await addData(STORE_PEOPLE, person);
-                }
-                for (const event of data.events) {
-                    await addData(STORE_EVENTS, event);
-                }
+    const margin = 10; // mm
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    
+    // NOUVEAU : 7 colonnes pour tous les jours de la semaine (Samedi et Dimanche inclus)
+    const numberOfColumns = 7; 
+    const colWidth = (pageWidth - 2 * margin) / numberOfColumns; 
+    
+    const lineHeight = 7; // mm par ligne de texte (dates, permanences, backups)
+    const weekBlockHeight = 3 * lineHeight; // 3 lignes par semaine
+    const weekSpacing = 5; // mm d'espace entre les blocs de semaines
+    const footerHeight = 10; // Espace pour la pagination et le timestamp
 
-                showToast("Données importées avec succès.", "success");
-                closeModal();
-                loadPeople(); // Reload and re-render calendar
-                loadEvents();
-            } else {
-                showToast("Fichier JSON invalide.", "error");
-            }
-        } catch (e) {
-            console.error("Erreur lors de la lecture ou du parsing du fichier JSON:", e);
-            showToast("Erreur lors de l'importation du fichier JSON.", "error");
+    // Couleurs spécifiques pour le PDF
+    const PDF_HEADER_BG_COLOR = '#F0F0F0'; // Gris clair
+    const PDF_WEEKEND_BG_COLOR = '#E5E5E5'; // Gris légèrement plus foncé pour le week-end
+    const PDF_PERMANENCE_TEXT_COLOR = EVENT_COLORS.permanence;
+    const PDF_BACKUP_TEXT_COLOR = EVENT_COLORS.permanence_backup;
+    const PDF_DEFAULT_TEXT_COLOR = '#333333';
+    const PDF_WEEKEND_TEXT_COLOR = '#888888'; // Texte gris pour le week-end
+
+    let currentY = margin;
+    let pageNum = 1;
+
+    // MODIFIÉ : Fonction pour ajouter le titre de la page et les footers
+    // `totalPages` sera mis à jour lors du deuxième passage
+    const addPageLayout = (docInstance, currentPageNum, totalPages, isFirstPass = true) => {
+        // En-tête
+        docInstance.setFontSize(14);
+        docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
+        docInstance.text(`Planning des Permanences : ${startDate.format('DD/MM/YYYY')} - ${endDate.format('DD/MM/YYYY')}`, pageWidth / 2, margin + 5, { align: 'center' });
+        
+        // Pied de page (position ajustée) - Seulement si le totalPages est connu (deuxième passage)
+        if (!isFirstPass) { // Seulement au deuxième passage pour avoir le total des pages
+            docInstance.setFontSize(8);
+            docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
+            const generatedTime = dayjs().format('DD/MM/YYYY HH:mm');
+            docInstance.text(`Généré le: ${generatedTime}`, margin, pageHeight - margin + 3, { align: 'left' });
+            docInstance.text(`Page ${currentPageNum}/${totalPages}`, pageWidth - margin, pageHeight - margin + 3, { align: 'right' }); // MODIFICATION ICI : removed || 0
         }
+        
+        return margin + 15; // Retourne la position Y après l'en-tête
     };
-    reader.readAsText(file);
-}
 
-// --- Statistiques ---
-function showStats() {
-    showModal(`
-        <h2>Statistiques de Permanence et Télétravail</h2>
-        <div class="form-group">
-            <label for="statsStartDate">Date de début :</label>
-            <input type="date" id="statsStartDate" required>
-        </div>
-        <div class="form-group">
-            <label for="statsEndDate">Date de fin :</label>
-            <input type="date" id="statsEndDate" required>
-        </div>
-        <div class="modal-actions">
-            <button class="button-primary" onclick="generateStats()">Générer les statistiques</button>
-            <button class="button-secondary" onclick="closeModal()">Fermer</button>
-        </div>
-        <div id="statsResults" class="mt-3">
-            </div>
-    `);
+    console.log("Day.js current locale at PDF generation start:", dayjs.locale()); // Debugging: Check current locale
 
-    // Set default dates for stats
-    document.getElementById('statsStartDate').value = dayjs().startOf('month').format('YYYY-MM-DD');
-    document.getElementById('statsEndDate').value = dayjs().endOf('month').format('YYYY-MM-DD');
-}
+    // Lire les données pré-formatées depuis IndexedDB
+    const pdfData = await getAllItems(STORE_PDF_GENERATION);
 
-function generateStats() {
-    const statsStartDate = dayjs(document.getElementById('statsStartDate').value);
-    const statsEndDate = dayjs(document.getElementById('statsEndDate').value);
+    // Groupement des données par semaine (7 jours par semaine)
+    const weeksData = [];
+    
+    let loopStartDate = dayjs(startDate).startOf('week'); 
+    if (loopStartDate.day() === 0) { // Si le début de semaine est Dimanche (0), on avance au Lundi (1)
+        loopStartDate = loopStartDate.add(1, 'day');
+    } else if (loopStartDate.day() !== 1) { // Si ce n'est ni Dimanche ni Lundi, on va au Lundi précédent
+        loopStartDate = loopStartDate.day(1);
+    }
+    
+    let currentWeekIter = loopStartDate;
 
-    if (statsStartDate.isAfter(statsEndDate)) {
-        showToast("La date de début ne peut pas être après la date de fin.", "error");
+
+    while (currentWeekIter.isSameOrBefore(endDate.endOf('week'), 'day')) { // Assure d'inclure la semaine de endDate
+        const week = [];
+        for (let i = 0; i < 7; i++) { // Pour chaque jour de la semaine (0 = dimanche, 6 = samedi)
+            const currentDay = currentWeekIter.add(i, 'day');
+            const dateKey = currentDay.format('YYYY-MM-DD');
+            
+            let dayPdfData = {
+                date: dateKey,
+                dayOfWeekFr: currentDay.locale('fr').format('ddd DD/MM'), // Forcer la locale française
+                permanenceNames: '',
+                backupNames: '',
+                isWeekend: (currentDay.day() === 0 || currentDay.day() === 6) // Dimanche=0, Samedi=6
+            };
+
+            // Chercher les données pré-préparées pour ce jour
+            const foundData = pdfData.find(d => d.date === dateKey);
+
+            if (foundData) {
+                dayPdfData.permanenceNames = foundData.permanenceNames;
+                dayPdfData.backupNames = foundData.backupNames;
+                dayPdfData.isWeekend = foundData.isWeekend; // Utiliser le flag de la DB
+            }
+            
+            week.push(dayPdfData);
+        }
+        weeksData.push(week);
+        currentWeekIter = currentWeekIter.add(1, 'week'); // Passer à la semaine suivante
+    }
+    
+    // Filtrer les semaines qui ne contiennent aucune donnée pertinente pour la période d'export.
+    // Une semaine est pertinente si au moins un de ses jours est inclus dans la période [startDate, endDate]
+    // Ou si elle contient des événements (ce qui est déjà géré par la boucle ci-dessus qui couvre toutes les semaines
+    // dont au moins un jour est dans la période)
+    const relevantWeeksData = weeksData.filter(week => {
+        return week.some(dayData => {
+            const dayDate = dayjs(dayData.date);
+            return dayDate.isBetween(startDate, endDate, 'day', '[]');
+        });
+    });
+
+
+    if (relevantWeeksData.length === 0) {
+        showToast("Aucune donnée de permanence à exporter pour la période sélectionnée.", "info", 5000);
         return;
     }
 
-    const stats = {}; // { personId: { permanence: N, telework_punctual: N, telework_recurrent: N, leave: N } }
+    // --- Premier passage : Rendu du contenu dans le PDF pour calculer le nombre de pages ---
+    currentY = addPageLayout(doc, pageNum, 0, true); // Dessine l'en-tête de la première page, sans footer initial
+
+    for (const week of relevantWeeksData) {
+        // Gérer les sauts de page avant de dessiner la semaine actuelle
+        if (currentY + weekBlockHeight + weekSpacing > pageHeight - margin - footerHeight) {
+            doc.addPage();
+            pageNum++;
+            currentY = addPageLayout(doc, pageNum, 0, true); // Dessine l'en-tête de la nouvelle page, sans footer
+        }
+        
+        let tempX; // Position X pour le dessin des cellules
+
+        // --- Ligne des Dates (avec fond coloré et texte) ---
+        tempX = margin;
+        doc.setFontSize(9);
+        week.forEach(dayData => {
+            const bgColor = dayData.isWeekend ? PDF_WEEKEND_BG_COLOR : PDF_HEADER_BG_COLOR;
+            const textColor = dayData.isWeekend ? PDF_WEEKEND_TEXT_COLOR : PDF_DEFAULT_TEXT_COLOR;
+            
+            doc.setFillColor(bgColor);
+            doc.rect(tempX, currentY, colWidth, lineHeight, 'F'); // Dessine le fond
+            doc.setTextColor(textColor);
+            doc.text(dayData.dayOfWeekFr, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
+            tempX += colWidth;
+        });
+        currentY += lineHeight;
+
+        // --- Ligne des Permanences ---
+        tempX = margin;
+        doc.setFontSize(10);
+        week.forEach(dayData => {
+            const textColor = dayData.isWeekend ? PDF_WEEKEND_TEXT_COLOR : PDF_PERMANENCE_TEXT_COLOR;
+            doc.setTextColor(textColor);
+            doc.text(dayData.permanenceNames, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
+            tempX += colWidth;
+        });
+        currentY += lineHeight;
+
+        // --- Ligne des Permanences Backup ---
+        tempX = margin;
+        week.forEach(dayData => {
+            const textColor = dayData.isWeekend ? PDF_WEEKEND_TEXT_COLOR : PDF_BACKUP_TEXT_COLOR;
+            doc.setTextColor(textColor);
+            doc.text(dayData.backupNames, tempX + colWidth / 2, currentY + lineHeight / 2 + 1, { align: 'center', maxWidth: colWidth - 2 });
+            tempX += colWidth;
+        });
+        currentY += lineHeight;
+
+        currentY += weekSpacing; // Espacement après la semaine
+    }
+
+    // --- Deuxième passage pour ajouter la pagination et l'horodatage corrects ---
+    const totalPages = doc.internal.getNumberOfPages(); // MODIFICATION ICI : Utilisation de getNumberOfPages()
+    for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        addPageLayout(doc, i, totalPages, false); // Redessine le pied de page avec le nombre total de pages correct (isFirstPass = false)
+    }
+
+    doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}.pdf`);
+    showToast('Le PDF du planning des permanences a été généré !', 'success');
+}
+
+
+// --- Nouvelles fonctions pour les statistiques (v20.19) ---
+function showStatsModal() {
+    const currentYear = dayjs().year();
+    const defaultStartDate = dayjs().startOf('year').format('YYYY-MM-DD');
+    const defaultEndDate = dayjs().endOf('year').format('YYYY-MM-DD');
+
+    const content = `
+        <p>Calcule le nombre de jours de permanence par personne sur la période sélectionnée. Inclut les permanences et permanences (backup).</p>
+        ${createDatePicker('statsStartDate', 'Date de début', defaultStartDate, true)}
+        ${createDatePicker('statsEndDate', 'Date de fin', defaultEndDate, true)}
+        <div class="form-group button-group">
+            <button class="button-primary" onclick="generateAndDisplayStats()">Générer les statistiques</button>
+        </div>
+        <div id="statsResults" class="stats-table-container">
+            </div>
+    `;
+
+    // Pas de boutons dans le footer de la modale principale pour laisser place aux boutons internes
+    showModal('Statistiques des Permanences', content, []);
+    
+    // Générer les stats automatiquement à l'ouverture avec la période par défaut
+    setTimeout(() => generateAndDisplayStats(), 100);
+}
+
+function generateAndDisplayStats() {
+    const startDateStr = document.getElementById('statsStartDate').value;
+    const endDateStr = document.getElementById('statsEndDate').value;
+
+    const startDate = dayjs(startDateStr);
+    const endDate = dayjs(endDateStr);
+
+    if (!startDate.isValid() || !endDate.isValid() || startDate.isAfter(endDate)) {
+        showToast("Veuillez sélectionner une période de dates valide.", "error");
+        return;
+    }
+
+    // Initialiser les stats pour TOUTES les personnes
+    const stats = {};
     people.forEach(person => {
         stats[person.id] = {
-            permanence: 0,
-            permanence_backup: 0,
-            telework_punctual: 0,
-            telework_recurrent: 0,
-            leave: 0
+            name: person.name,
+            permanenceDays: 0
         };
     });
 
-    for (let d = statsStartDate; d.isSameOrBefore(statsEndDate, 'day'); d = d.add(1, 'day')) {
-        const currentDay = d.format('YYYY-MM-DD');
-        allCalendarEvents.forEach(event => {
-            const eventStart = dayjs(event.startDate);
-            const eventEnd = dayjs(event.endDate);
+    allCalendarEvents.forEach(event => {
+        // Inclure 'permanence_backup' dans le calcul
+        if (event.type !== 'permanence' && event.type !== 'permanence_backup') {
+            return;
+        }
 
-            let isEventActiveOnDay = false;
+        const eventStartDate = dayjs(event.start);
+        // FullCalendar end date is exclusive, subtract 1 day for inclusive comparison
+        const eventEndDate = dayjs(event.end).subtract(1, 'day');
 
-            if (event.recurrent) {
-                let currentRecurrenceDate = dayjs(event.startDate);
-                while (currentRecurrenceDate.isSameOrBefore(eventEnd) &&
-                       (!event.recurrencePattern.until || currentRecurrenceDate.isSameOrBefore(dayjs(event.recurrencePattern.until)))) {
+        // Check if event overlaps with the selected stats period
+        if (eventStartDate.isSameOrBefore(endDate, 'day') && eventEndDate.isSameOrAfter(startDate, 'day')) {
+            const overlapStart = dayjs.max(eventStartDate, startDate);
+            const overlapEnd = dayjs.min(eventEndDate, endDate);
 
-                    if (currentRecurrenceDate.isSame(d, 'day') &&
-                        (event.recurrencePattern.unit !== 'week' || event.recurrencePattern.daysOfWeek.includes(currentRecurrenceDate.weekday()))) {
-                        isEventActiveOnDay = true;
-                        break;
-                    }
-                    currentRecurrenceDate = currentRecurrenceDate.add(event.recurrencePattern.interval, event.recurrencePattern.unit);
+            let currentDay = overlapStart;
+            while (currentDay.isSameOrBefore(overlapEnd, 'day')) {
+                const personStat = stats[event.personId];
+                if (personStat) {
+                    personStat.permanenceDays++;
                 }
-            } else {
-                isEventActiveOnDay = d.isBetween(eventStart, eventEnd, 'day', '[]');
+                currentDay = currentDay.add(1, 'day');
             }
+        }
+    });
 
-            if (isEventActiveOnDay && stats[event.personId]) {
-                stats[event.personId][event.type]++;
-            }
-        });
-    }
+    displayStatsTable(stats);
+}
 
+function displayStatsTable(stats) {
     const statsResultsDiv = document.getElementById('statsResults');
+    if (!statsResultsDiv) return;
+
     let tableHtml = `
-        <h3>Statistiques du ${statsStartDate.format('DD/MM/YYYY')} au ${statsEndDate.format('DD/MM/YYYY')}</h3>
         <table class="stats-table">
             <thead>
                 <tr>
                     <th>Personne</th>
-                    <th>Permanence</th>
-                    <th>Backup Permanence</th>
-                    <th>Télétravail Ponctuel</th>
-                    <th>Télétravail Récurrent</th>
-                    <th>Congé / Absence</th>
-                    <th>Total Jours (Calendrier)</th>
+                    <th>Jours de Permanence</th>
                 </tr>
             </thead>
             <tbody>
     `;
 
-    people.forEach(person => {
-        const personStats = stats[person.id];
-        const totalDays = Object.values(personStats).reduce((sum, count) => sum + count, 0); // Sum all event types for total days
+    // Afficher toutes les personnes, même si permanenceDays est à 0
+    // Trier les personnes par nom avant d'afficher
+    const sortedPeopleStats = Object.values(stats).sort((a, b) => a.name.localeCompare(b.name));
+
+    sortedPeopleStats.forEach(stat => {
         tableHtml += `
-        <tr>
-            <td>${person.name}</td>
-            <td>${personStats.permanence}</td>
-            <td>${personStats.permanence_backup}</td>
-            <td>${personStats.telework_punctual}</td>
-            <td>${personStats.telework_recurrent}</td>
-            <td>${personStats.leave}</td>
-            <td>${totalDays}</td>
-        </tr>
+            <tr>
+                <td>${stat.name}</td>
+                <td>${stat.permanenceDays}</td>
+            </tr>
         `;
     });
 
@@ -1305,74 +1483,6 @@ function exportStatsAsCsv() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    showToast("Statistiques exportées en CSV.", "success");
-}
-
-// --- Gestion des Modales et Toasts ---
-function showModal(content) {
-    const modalsContainer = document.getElementById('modalsContainer');
-    modalsContainer.innerHTML = `
-        <div class="modal-backdrop" onclick="closeModal()"></div>
-        <div class="modal-content glass-effect">
-            ${content}
-        </div>
-    `;
-    modalsContainer.style.display = 'flex';
-    // Focus the first input if available
-    const firstInput = modalsContainer.querySelector('input, select, textarea');
-    if (firstInput) {
-        firstInput.focus();
-    }
-}
-
-function closeModal() {
-    const modalsContainer = document.getElementById('modalsContainer');
-    modalsContainer.innerHTML = '';
-    modalsContainer.style.display = 'none';
-}
-
-function showToast(message, type = 'info') {
-    const toastsContainer = document.getElementById('toastsContainer');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.textContent = message;
-    toastsContainer.appendChild(toast);
-
-    setTimeout(() => {
-        toast.classList.add('hide');
-        toast.addEventListener('transitionend', () => toast.remove());
-    }, 3000); // Masquer après 3 secondes
-}
-
-// --- Gestion du Thème ---
-function initializeTheme() {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-        document.body.classList.add('dark-mode');
-    }
-}
-
-function toggleTheme() {
-    document.body.classList.toggle('dark-mode');
-    if (document.body.classList.contains('dark-mode')) {
-        localStorage.setItem('theme', 'dark');
-        showToast("Thème sombre activé", "info");
-    } else {
-        localStorage.setItem('theme', 'light');
-        showToast("Thème clair activé", "info");
-    }
-}
-
-// --- Gestionnaires d'événements ---
-function setupEventListeners() {
-    document.getElementById('addPersonBtn').addEventListener('click', addPerson);
-    document.getElementById('addPlanningEventBtn').addEventListener('click', addPlanningEvent);
-    document.getElementById('exportPdfBtn').addEventListener('click', exportPdf);
-    document.getElementById('exportPngBtn').addEventListener('click', exportPng);
-    document.getElementById('exportJsonBtn').addEventListener('click', exportJson);
-    document.getElementById('importJsonBtn').addEventListener('click', importJson);
-    document.getElementById('showStatsBtn').addEventListener('click', showStats);
-    document.getElementById('themeToggleButton').addEventListener('click', toggleTheme);
-
-    // Initialisation des tooltips ou autres interactions JS si nécessaire
+    URL.revokeObjectURL(url);
+    showToast('Statistiques de permanence exportées en CSV !', 'success');
 }
