@@ -18,6 +18,31 @@ Ajouter la date et l'heure d'export dans le nom de fichier (?)
 La solution principale pour l'XSS est l'échappement (ou encodage) des sorties. Cela signifie que toutes les données provenant d'une source non fiable (comme l'entrée utilisateur) doivent être converties en une forme sûre avant d'être insérées dans le HTML.
 Ajoute du mécanisme dans la v20.48.10.1
 
+La sécurité mise en place cible principalement la prévention des failles **XSS (Cross-Site Scripting)** en appliquant une stratégie d'**encodage HTML systématique** des données saisies par l'utilisateur avant qu'elles ne soient affichées dans l'interface.
+
+Voici un résumé des mesures prises :
+
+1.  **Fonction d'Échappement HTML (`escapeHTML`)** : Une nouvelle fonction utilitaire `escapeHTML(str)` a été ajoutée. Elle convertit les caractères spéciaux HTML (comme `<`, `>`, `&`, `"`, `'`) en leurs entités HTML correspondantes (par exemple, `<` devient `&lt;`). Cela neutralise tout code malveillant qui tenterait d'être injecté.
+
+2.  **Sanitisation des Entrées Utilisateur** :
+    * **Noms des Personnes** : Lors de l'ajout ou de la modification de personnes, le nom est désormais échappé via `escapeHTML()` avant d'être stocké dans IndexedDB et affiché dans la liste des personnes ou les titres d'événements.
+    * **Importation de Données** : Les noms des personnes et les titres des événements importés via JSON sont également passés par `escapeHTML()` pour s'assurer qu'aucune donnée malveillante n'est introduite via ce canal.
+
+3.  **Sécurisation de la Génération Dynamique d'HTML** :
+    * **Messages des Toasts** : Tous les messages affichés dans les notifications "toast" sont échappés.
+    * **Modales** :
+        * Les titres des modales sont systématiquement échappés.
+        * Le contenu des champs de formulaire générés (inputs, selects, textareas, datepickers) voit leurs valeurs et labels échappés.
+        * Les messages affichés dans les modales de confirmation sont également échappés.
+    * **Calendrier FullCalendar** : Les titres des événements affichés dans le calendrier (y compris les info-bulles et le contenu visuel des événements) sont échappés via la fonction `escapeHTML()`.
+    * **Affichage des Listes et Tableaux** :
+        * Les noms des personnes dans la liste latérale sont échappés.
+        * Les données affichées dans la table des statistiques (noms des personnes, en-têtes) sont échappées.
+        * Les noms des librairies dans la modale de vérification des versions sont échappés, ainsi que leurs URLs sources.
+    * **Préparation des Données PDF et CSV** : Les noms des personnes et autres données textuelles utilisées pour la génération du PDF ou l'export CSV sont échappés pour garantir que même dans ces formats de sortie, les données proviennent d'une source nettoyée.
+
+En résumé, l'approche est de traiter toutes les données provenant de l'utilisateur comme potentiellement non fiables et de les échapper systématiquement juste avant qu'elles ne soient insérées dans le HTML de la page. Cela garantit que les éventuels scripts malveillants injectés sont traités comme du texte simple et non exécutés par le navigateur, prévenant ainsi les attaques XSS.
+
 ## Déplacer toasts
 Pour une meilleure lecture les toasts devraient s'afficher en bas de page, pas en haut.
 
