@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.48.5.2"; // INCEMENTATION : Correction du bug d'export PDF (TypeError: Cannot read properties of undefined (reading 'add'))
+const APP_VERSION = "v20.48.6"; // INCEMENTATION : Ajout de la fonctionnalité de vérification des versions des librairies
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -26,6 +26,40 @@ const STORE_PEOPLE = 'people';
 const STORE_EVENTS = 'events';
 const STORE_PDF_GENERATION = 'pdfData'; // Nouveau store pour les données PDF temporaires
 let db;
+
+// Informations sur les librairies utilisées (mise à jour manuelle)
+const LIBRARIES_INFO = [
+    {
+        name: "FullCalendar",
+        currentVersion: "6.1.17",
+        latestKnownVersion: "6.1.17", // Mettre à jour manuellement
+        recommendation: "À jour",
+        sourceUrl: "https://fullcalendar.io/"
+    },
+    {
+        name: "Day.js",
+        currentVersion: "1.11.10",
+        latestKnownVersion: "1.11.10", // Mettre à jour manuellement
+        recommendation: "À jour",
+        sourceUrl: "https://day.js.org/"
+    },
+    {
+        name: "Font Awesome",
+        currentVersion: "5.15.4",
+        latestKnownVersion: "6.x.x", // Exemple: une version plus récente majeure existe
+        recommendation: "Mise à jour recommandée (si compatible)",
+        sourceUrl: "https://fontawesome.com/"
+    },
+    {
+        name: "jsPDF",
+        currentVersion: "2.10.0",
+        latestKnownVersion: "2.10.0", // Mettre à jour manuellement
+        recommendation: "À jour",
+        sourceUrl: "https://parall.ax/products/jspdf"
+    }
+    // Ajoutez d'autres librairies ici au besoin
+];
+
 
 // Fonction pour ouvrir la base de données IndexedDB
 function openDB() {
@@ -170,6 +204,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const showStatsBtn = document.getElementById('showStatsBtn');
     if (showStatsBtn) showStatsBtn.addEventListener('click', showStatsModal);
+
+    // Nouveau bouton pour la vérification des versions
+    const showLibraryVersionsBtn = document.getElementById('showLibraryVersionsBtn');
+    if (showLibraryVersionsBtn) showLibraryVersionsBtn.addEventListener('click', showLibraryVersionsModal);
 });
 
 // Fonctions utilitaires pour le thème
@@ -1497,4 +1535,41 @@ function exportStatsAsCsv() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast('Statistiques de permanence exportées en CSV !', 'success');
+}
+
+// Nouvelle fonction pour afficher les versions des librairies
+function showLibraryVersionsModal() {
+    let content = `
+        <p>Cette section affiche les versions des principales librairies utilisées par l'application. Les informations sur les "Dernières Versions Connues" sont mises à jour manuellement par les développeurs.</p>
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Librairie</th>
+                    <th>Version Actuelle</th>
+                    <th>Dernière Version Connue</th>
+                    <th>Recommandation</th>
+                    <th>Source</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    LIBRARIES_INFO.forEach(lib => {
+        content += `
+            <tr>
+                <td>${lib.name}</td>
+                <td>${lib.currentVersion}</td>
+                <td>${lib.latestKnownVersion}</td>
+                <td>${lib.recommendation}</td>
+                <td><a href="${lib.sourceUrl}" target="_blank">Lien</a></td>
+            </tr>
+        `;
+    });
+
+    content += `
+            </tbody>
+        </table>
+    `;
+
+    showModal('Vérification des Versions des Librairies', content, [{ text: 'Fermer', onclick: 'closeModal()', class: 'button-secondary' }]);
 }
