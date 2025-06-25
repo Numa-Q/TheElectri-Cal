@@ -44,7 +44,7 @@ Voici un résumé des mesures prises :
 En résumé, l'approche est de traiter toutes les données provenant de l'utilisateur comme potentiellement non fiables et de les échapper systématiquement juste avant qu'elles ne soient insérées dans le HTML de la page. Cela garantit que les éventuels scripts malveillants injectés sont traités comme du texte simple et non exécutés par le navigateur, prévenant ainsi les attaques XSS.
 
 ## Déplacer toasts
-Pour une meilleure lecture les toasts devraient s'afficher en bas de page, pas en haut.
+~~Pour une meilleure lecture les toasts devraient s'afficher en bas de page, pas en haut~~. (v20.42.0)
 
 ## PDF jours en anglais
 Oui, la ligne `Day.js current locale at PDF generation start: en` dans la console indique que la locale globale de Day.js est actuellement définie sur l'anglais au moment où ce message est enregistré dans la fonction `generatePermanencePdfTable`.
