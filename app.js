@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.48.4"; // INCEMENTATION : Ajout de la date et heure de création PDF dans le nom de fichier
+const APP_VERSION = "v20.48.5"; // INCEMENTATION : Ajout de la période sélectionnée dans l'export CSV des stats
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -1142,7 +1142,7 @@ async function preparePdfDataAndGeneratePdf() {
                 date: dateKey, // KeyPath
                 dayOfWeekFr: formattedDayOfWeek,
                 permanenceNames: Array.from(dayData.permanence).join(', '),
-                backupNames: Array.from(dayData.permanence_backup).join(', '),
+                backupNames: Array.from(dayData.backup).join(', '),
                 isWeekend: isWeekend
             });
         }
@@ -1417,44 +1417,6 @@ function generateAndDisplayStats() {
     displayStatsTable(stats);
 }
 
-function displayStatsTable(stats) {
-    const statsResultsDiv = document.getElementById('statsResults');
-    if (!statsResultsDiv) return;
-
-    let tableHtml = `
-        <table class="stats-table">
-            <thead>
-                <tr>
-                    <th>Personne</th>
-                    <th>Jours de Permanence</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    // Afficher toutes les personnes, même si permanenceDays est à 0
-    // Trier les personnes par nom avant d'afficher
-    const sortedPeopleStats = Object.values(stats).sort((a, b) => a.name.localeCompare(b.name));
-
-    sortedPeopleStats.forEach(stat => {
-        tableHtml += `
-            <tr>
-                <td>${stat.name}</td>
-                <td>${stat.permanenceDays}</td>
-            </tr>
-        `;
-    });
-
-    tableHtml += `
-            </tbody>
-        </table>
-        <div class="form-group button-group mt-3">
-            <button class="button-secondary" onclick="exportStatsAsCsv()">Exporter en CSV</button>
-        </div>
-    `;
-    statsResultsDiv.innerHTML = tableHtml;
-}
-
 function exportStatsAsCsv() {
     const statsResultsDiv = document.getElementById('statsResults');
     const table = statsResultsDiv ? statsResultsDiv.querySelector('table') : null;
@@ -1465,6 +1427,12 @@ function exportStatsAsCsv() {
     }
 
     let csv = [];
+    // MODIFICATION ICI : Ajout de la période sélectionnée
+    const startDate = document.getElementById('statsStartDate').value;
+    const endDate = document.getElementById('statsEndDate').value;
+    csv.push(`Période sélectionnée du: ${dayjs(startDate).format('DD/MM/YYYY')} au: ${dayjs(endDate).format('DD/MM/YYYY')}`);
+    csv.push(''); // Ligne vide pour la clarté
+
     // Headers
     const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText);
     csv.push(headers.join(';')); // Use semicolon for CSV (common in France)
