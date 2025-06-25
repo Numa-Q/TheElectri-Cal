@@ -16,6 +16,7 @@ Ajouter la date et l'heure d'export dans le nom de fichier (?)
 ## OWASP
 ### Solutions pour prévenir l'XSS (sans régression fonctionnelle)
 La solution principale pour l'XSS est l'échappement (ou encodage) des sorties. Cela signifie que toutes les données provenant d'une source non fiable (comme l'entrée utilisateur) doivent être converties en une forme sûre avant d'être insérées dans le HTML.
+Ajoute du mécanisme dans la v20.48.10.1
 
 ## Déplacer toasts
 Pour une meilleure lecture les toasts devraient s'afficher en bas de page, pas en haut.
