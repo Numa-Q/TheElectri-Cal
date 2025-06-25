@@ -7,7 +7,7 @@ styles.css -> to be deleted.
 Ajouter la période sélectionnée en en tête de fichier
 ajouter la date et l'heure d'exporta dans le nom de fichier (?)
 
-###E xport pdf 
+### Export pdf 
 ajouter la date et l'heure d'export dans le nom de fichier
 
 ### Controle de version/dette technique.
