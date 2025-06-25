@@ -9,7 +9,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
 // MODIFIÉ : Version de l'application mise à jour pour inclure les dernières corrections et fonctionnalités
-const APP_VERSION = "v20.48.8"; 
+const APP_VERSION = "v20.48.9"; 
 
 // MODIFIÉ : Informations sur les versions des librairies pour la vérification manuelle
 const LIBRARIES_INFO = [
@@ -1199,7 +1199,7 @@ async function preparePdfDataAndGeneratePdf() {
                 date: dateKey, // KeyPath
                 dayOfWeekFr: formattedDayOfWeek,
                 permanenceNames: Array.from(dayData.permanence).join(', '),
-                backupNames: Array.from(dayData.permanence_backup).join(', '),
+                backupNames: Array.from(dayData.backup.concat(Array.from(dayData.permanence_backup)).filter(Boolean)).join(', '),
                 isWeekend: isWeekend
             });
         }
@@ -1392,7 +1392,8 @@ async function generatePermanencePdfTable(startDate, endDate) {
     }
 
     // --- Deuxième passage pour ajouter la pagination et l'horodatage corrects ---
-    const totalPages = doc.internal.pages.length;
+    // MODIFIÉ : Correction du calcul du nombre total de pages
+    const totalPages = doc.internal.pages.length -1; // -1 car jsPDF peut inclure une page interne supplémentaire (généralement null)
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
         addPageLayout(doc, i, totalPages, false); // Redessine le pied de page avec le nombre total de pages correct (isFirstPass = false)
