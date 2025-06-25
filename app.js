@@ -9,7 +9,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
 // MODIFIÉ : Version de l'application mise à jour pour inclure les dernières corrections et fonctionnalités
-const APP_VERSION = "v20.48.7.1"; 
+const APP_VERSION = "v20.48.8"; 
 
 // MODIFIÉ : Informations sur les versions des librairies pour la vérification manuelle
 const LIBRARIES_INFO = [
@@ -1398,7 +1398,8 @@ async function generatePermanencePdfTable(startDate, endDate) {
         addPageLayout(doc, i, totalPages, false); // Redessine le pied de page avec le nombre total de pages correct (isFirstPass = false)
     }
 
-    doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}.pdf`);
+    // MODIFIÉ : Inclure le timestamp dans le nom du fichier PDF
+    doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}_${dayjs().format('YYYY-MM-DD_HHmmss')}.pdf`);
     showToast('Le PDF du planning des permanences a été généré !', 'success');
 }
 
@@ -1474,10 +1475,12 @@ function generateAndDisplayStats() {
         }
     });
 
-    displayStatsTable(stats);
+    // MODIFIÉ : Passe les dates à displayStatsTable pour l'export CSV
+    displayStatsTable(stats, startDateStr, endDateStr);
 }
 
-function displayStatsTable(stats) {
+// MODIFIÉ : Ajout des paramètres startDateStr et endDateStr
+function displayStatsTable(stats, startDateStr, endDateStr) {
     const statsResultsDiv = document.getElementById('statsResults');
     if (!statsResultsDiv) return;
 
@@ -1509,13 +1512,14 @@ function displayStatsTable(stats) {
             </tbody>
         </table>
         <div class="form-group button-group mt-3">
-            <button class="button-secondary" onclick="exportStatsAsCsv()">Exporter en CSV</button>
+            <button class="button-secondary" onclick="exportStatsAsCsv('${startDateStr}', '${endDateStr}')">Exporter en CSV</button>
         </div>
     `;
     statsResultsDiv.innerHTML = tableHtml;
 }
 
-function exportStatsAsCsv() {
+// MODIFIÉ : Accepte les paramètres startDateStr et endDateStr
+function exportStatsAsCsv(startDateStr, endDateStr) {
     const statsResultsDiv = document.getElementById('statsResults');
     const table = statsResultsDiv ? statsResultsDiv.querySelector('table') : null;
 
@@ -1525,6 +1529,9 @@ function exportStatsAsCsv() {
     }
 
     let csv = [];
+    // NOUVEAU : Ajout de la période sélectionnée au début du fichier CSV
+    csv.push(`"Période sélectionnée : du ${dayjs(startDateStr).format('DD/MM/YYYY')} au ${dayjs(endDateStr).format('DD/MM/YYYY')}"`);
+
     // Headers
     const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText);
     csv.push(headers.join(';')); // Use semicolon for CSV (common in France)
