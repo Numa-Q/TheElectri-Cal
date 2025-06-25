@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Electri-Cal</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link href='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.17/main.min.css' rel='stylesheet' />
     <link rel="stylesheet" href="style.css">
 </head>
@@ -23,9 +23,8 @@
             <button id="exportJsonBtn">Exporter JSON</button>
             <button id="importJsonBtn">Importer JSON</button>
             <button id="showStatsBtn">Afficher Statistiques</button>
+            <button id="showLibraryVersionsBtn">Vérifier Versions Librairies</button>
             <button id="themeToggleButton">Thème Sombre</button>
-            <button id="showLibraryVersionsBtn">Versions Librairies</button>
-            <button class="button-danger" onclick="clearDatabase()">Effacer tout</button>
 
             <div class="people-list-container glass-effect">
                 <h3>Personnes habilitées</h3>
@@ -48,12 +47,14 @@
 
     <script src='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.17/index.global.min.js'></script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.17/locales-all.min.js'></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.11/dayjs.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.11/plugin/customParseFormat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.11/plugin/isBetween.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.11/plugin/weekday.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.11/plugin/isSameOrBefore.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.10.0/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/customParseFormat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isBetween.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/weekday.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrBefore.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/minMax.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrAfter.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="app.js"></script>
 </body>
