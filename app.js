@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.48.11"; // INCEMENTATION : Correction XSS (échappement HTML)
+const APP_VERSION = "v20.48.12"; // INCEMENTATION : Correction XSS (échappement HTML) et mise à jour des librairies
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -525,7 +525,15 @@ async function addPlanningEvent() {
     };
 
     const eventsToAdd = [];
-    const eventTypeDisplay = eventTypes.find(type => type.value === eventType)?.text;
+    const eventTypesMapping = { // Added mapping for display
+        'permanence': 'Permanence',
+        'permanence_backup': 'Permanence Backup',
+        'telework_punctual': 'Télétravail (Ponctuel)',
+        'telework_recurrent': 'Télétravail (Récurrent)',
+        'leave': 'Congés'
+    };
+    const eventTypeDisplay = eventTypesMapping[eventType] || eventType; // Use mapping, fallback to raw type
+
 
     if (selectedRecurrence.length > 0) {
         const recurrenceGroupId = crypto.randomUUID();
@@ -677,8 +685,15 @@ async function editPlanningEvent() {
         showToast("Personne introuvable.", "error");
         return;
     }
-
-    const eventTypeDisplay = eventTypes.find(type => type.value === eventType)?.text;
+    
+    const eventTypesMapping = { // Added mapping for display
+        'permanence': 'Permanence',
+        'permanence_backup': 'Permanence Backup',
+        'telework_punctual': 'Télétravail (Ponctuel)',
+        'telework_recurrent': 'Télétravail (Récurrent)',
+        'leave': 'Congés'
+    };
+    const eventTypeDisplay = eventTypesMapping[eventType] || eventType; // Use mapping, fallback to raw type
 
     const updatedEvent = {
         ...allCalendarEvents[eventIndex],
@@ -952,9 +967,11 @@ async function importDataFromJson() {
 
             // Importer les nouvelles données
             for (const person of importedData.people) {
+                // Future improvement: Add more robust validation here for each person object
                 await addOrUpdateObject(STORE_PEOPLE, person);
             }
             for (const event of importedData.events) {
+                // Future improvement: Add more robust validation here for each event object
                 await addOrUpdateObject(STORE_EVENTS, event);
             }
 
@@ -1416,9 +1433,9 @@ function exportStatsAsCsv() {
 // MODIFIÉ : Informations sur les versions des librairies pour la vérification manuelle
 const LIBRARIES_INFO = [
     { name: "FullCalendar", currentVersion: "6.1.17", latestKnownVersion: "6.1.17", recommendation: "À jour", sourceUrl: "https://fullcalendar.io/" },
-    { name: "Day.js", currentVersion: "1.11.10", latestKnownVersion: "1.11.11", recommendation: "Mise à jour mineure recommandée", sourceUrl: "https://day.js.org/" },
-    { name: "Font Awesome", currentVersion: "5.15.4", latestKnownVersion: "6.5.2", recommendation: "Mise à jour majeure recommandée", sourceUrl: "https://fontawesome.com/" },
-    { name: "jsPDF", currentVersion: "2.5.1", latestKnownVersion: "2.10.0", recommendation: "Mise à jour mineure recommandée (correction de bugs)", sourceUrl: "https://parall.ax/products/jspdf" }
+    { name: "Day.js", currentVersion: "1.11.11", latestKnownVersion: "1.11.11", recommendation: "À jour", sourceUrl: "https://day.js.org/" },
+    { name: "Font Awesome", currentVersion: "6.5.2", latestKnownVersion: "6.5.2", recommendation: "À jour", sourceUrl: "https://fontawesome.com/" },
+    { name: "jsPDF", currentVersion: "2.10.0", latestKnownVersion: "2.10.0", recommendation: "À jour", sourceUrl: "https://parall.ax/products/jspdf" }
 ];
 
 // MODIFIÉ : Fonction pour afficher la modale des versions des librairies
