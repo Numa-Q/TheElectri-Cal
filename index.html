@@ -28,8 +28,8 @@
 
             <div class="people-list-container glass-effect">
                 <h3>Personnes habilitées</h3>
-                <ul id="peopleList" class="compact-list">
-                </ul>
+                <ul id="peopleList">
+                    </ul>
             </div>
         </aside>
 
@@ -45,6 +45,37 @@
         <p>&copy; <span id="currentYear"></span>. <span id="appInfo"></span></p>
     </footer>
 
+    <div id="exportPngModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Exporter le planning en PNG</h2>
+                <button class="close-button" onclick="closeExportPngModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="startDatePng">Date de début :</label>
+                    <input type="date" id="startDatePng" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="endDatePng">Date de fin :</label>
+                    <input type="date" id="endDatePng" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label>Types d'événements à inclure :</label>
+                    <div id="eventTypeCheckboxesContainer" class="checkbox-group">
+                        </div>
+                </div>
+                <div class="form-group checkbox-option">
+                    <input type="checkbox" id="whiteBackgroundPng">
+                    <label for="whiteBackgroundPng">Fond blanc</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="exportPngConfirmBtn" class="button-primary">Exporter</button>
+                <button class="button-secondary" onclick="closeExportPngModal()">Annuler</button>
+            </div>
+        </div>
+    </div>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.17/index.global.min.js'></script>
     <script src='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.17/locales-all.min.js'></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
@@ -52,9 +83,9 @@
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isBetween.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/weekday.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrBefore.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/minMax.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrAfter.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <script src="app.js"></script>
 </body>
 </html>
