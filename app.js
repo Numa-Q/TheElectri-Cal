@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.48.5"; // INCEMENTATION : Ajout de la période sélectionnée dans l'export CSV des stats
+const APP_VERSION = "v20.48.5.1"; // INCEMENTATION : Ajout de la période sélectionnée dans l'export CSV des stats
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -1121,7 +1121,7 @@ async function preparePdfDataAndGeneratePdf() {
                     if (event.type === 'permanence') {
                         dailyPermanences[dateKey].permanence.add(person.name);
                     } else if (event.type === 'permanence_backup') {
-                        dailyPermanences[dateKey].permanence_backup.add(person.name);
+                        dailyPermanences[dateKey].backup.add(person.name); // Correction: changed from permanence_backup to backup
                     }
                 }
                 day = day.add(1, 'day');
@@ -1208,13 +1208,13 @@ async function generatePermanencePdfTable(startDate, endDate) {
             docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
             const generatedTime = dayjs().format('DD/MM/YYYY HH:mm');
             docInstance.text(`Généré le: ${generatedTime}`, margin, pageHeight - margin + 3, { align: 'left' });
-            docInstance.text(`Page ${currentPageNum}/${totalPages}`, pageWidth - margin, pageHeight - margin + 3, { align: 'right' }); // MODIFICATION ICI : removed || 0
+            docInstance.text(`Page ${currentPageNum}/${totalPages}`, pageWidth - margin, pageHeight - margin + 3, { align: 'right' }); 
         }
         
         return margin + 15; // Retourne la position Y après l'en-tête
     };
 
-    console.log("Day.js current locale at PDF generation start:", dayjs.locale()); // Debugging: Check current locale
+    console.log("Day.js current locale at PDF generation start:", dayjs.locale()); 
 
     // Lire les données pré-formatées depuis IndexedDB
     const pdfData = await getAllItems(STORE_PDF_GENERATION);
@@ -1331,7 +1331,7 @@ async function generatePermanencePdfTable(startDate, endDate) {
     }
 
     // --- Deuxième passage pour ajouter la pagination et l'horodatage corrects ---
-    const totalPages = doc.internal.getNumberOfPages(); // MODIFICATION ICI : Utilisation de getNumberOfPages()
+    const totalPages = doc.internal.getNumberOfPages(); 
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
         addPageLayout(doc, i, totalPages, false); // Redessine le pied de page avec le nombre total de pages correct (isFirstPass = false)
@@ -1416,6 +1416,48 @@ function generateAndDisplayStats() {
 
     displayStatsTable(stats);
 }
+
+function displayStatsTable(stats) {
+    const statsResultsDiv = document.getElementById('statsResults');
+    if (!statsResultsDiv) return;
+
+    let tableHtml = `
+        <h3>Résultats pour la période du ${dayjs(document.getElementById('statsStartDate').value).format('DD/MM/YYYY')} au ${dayjs(document.getElementById('statsEndDate').value).format('DD/MM/YYYY')}</h3>
+        <table class="stats-table">
+            <thead>
+                <tr>
+                    <th>Personne</th>
+                    <th>Jours de Permanence</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    const sortedStats = Object.values(stats).sort((a, b) => b.permanenceDays - a.permanenceDays);
+
+    if (sortedStats.length === 0) {
+        tableHtml += `<tr><td colspan="2">Aucune donnée disponible pour cette période ou aucune personne enregistrée.</td></tr>`;
+    } else {
+        sortedStats.forEach(stat => {
+            tableHtml += `
+                <tr>
+                    <td>${stat.name}</td>
+                    <td>${stat.permanenceDays}</td>
+                </tr>
+            `;
+        });
+    }
+
+    tableHtml += `
+            </tbody>
+        </table>
+        <div class="form-group button-group mt-3">
+            <button class="button-secondary" onclick="exportStatsAsCsv()">Exporter en CSV</button>
+        </div>
+    `;
+    statsResultsDiv.innerHTML = tableHtml;
+}
+
 
 function exportStatsAsCsv() {
     const statsResultsDiv = document.getElementById('statsResults');
