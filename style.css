@@ -111,6 +111,8 @@ main {
     margin: 0;
     flex-grow: 1; /* Permet à la liste de prendre l'espace */
     overflow-y: auto; /* Ajoute une barre de défilement si la liste est longue */
+    /* NOUVEAU: Permet à l'élément de rétrécir si nécessaire, mais gère le débordement interne */
+    overflow-x: hidden; 
 }
 
 .sidebar li {
@@ -127,7 +129,20 @@ main {
     transition: background-color 0.2s ease;
     color: var(--sidebar-text-color);
     min-height: 45px; /* Assure une hauteur minimale pour les boutons */
+    /* NOUVEAU: Empêche le débordement horizontal du texte dans la liste */
+    overflow: hidden; 
+    white-space: nowrap; /* Empêche le texte de passer à la ligne */
 }
+
+/* NOUVEAU: Style pour le texte du nom de la personne pour gérer le débordement */
+.sidebar li span {
+    flex-grow: 1; /* Permet au nom de prendre l'espace disponible */
+    min-width: 0; /* Permet au flex item de rétrécir au-delà de son contenu */
+    overflow: hidden; /* Cache le texte qui dépasse */
+    text-overflow: ellipsis; /* Ajoute des points de suspension */
+    white-space: nowrap; /* S'assure que le texte reste sur une seule ligne */
+}
+
 
 .dark-mode .sidebar li {
     /* MODIFIED: Increased opacity for better visibility in dark mode */
@@ -163,6 +178,8 @@ main {
     display: inline-flex; /* Ensure flex behavior for centering icon */
     align-items: center;
     justify-content: center;
+    /* NOUVEAU: Empêche les boutons de se réduire de manière excessive */
+    flex-shrink: 0; 
 }
 
 .person-actions button:hover {
@@ -519,15 +536,25 @@ button.button-danger:hover {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* NOUVEAU: Ajustement pour le titre de la liste des personnes pour éviter le débordement */
+.people-list-container h3 {
+    white-space: nowrap; /* Empêche le texte de passer à la ligne */
+    overflow: hidden; /* Cache le texte qui dépasse */
+    text-overflow: ellipsis; /* Ajoute des points de suspension */
+}
+
 /* Toasts */
 #toastsContainer {
     position: fixed;
-    top: 20px;
+    /* MODIFIED: Changed position from top to bottom */
+    bottom: 20px; 
     right: 20px;
     z-index: 1050; /* Au-dessus des modales */
     display: flex;
     flex-direction: column;
     gap: 10px;
+    /* NOUVEAU: Pour aligner les toasts en bas, le début de la colonne est en bas */
+    align-items: flex-end; 
 }
 
 .toast {
@@ -537,8 +564,9 @@ button.button-danger:hover {
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     opacity: 1;
-    transition: opacity 0.5s ease-in-out, transform 0.3s ease-out;
-    transform: translateX(0);
+    /* MODIFIED: Changed transform for fade-out to translateY */
+    transition: opacity 0.5s ease-in-out, transform 0.3s ease-out; 
+    transform: translateY(0); /* Initial state for toasts from bottom */
     display: flex;
     align-items: center;
     gap: 10px;
@@ -546,7 +574,8 @@ button.button-danger:hover {
 
 .toast.fade-out {
     opacity: 0;
-    transform: translateX(100%);
+    /* MODIFIED: Changed transform for fade-out to translateY */
+    transform: translateY(100%); 
 }
 
 .toast.info { background-color: var(--toast-info-bg); }
@@ -689,10 +718,13 @@ button.button-danger:hover {
     }
 
     #toastsContainer {
-        top: 10px;
+        /* MODIFIED: Adjusted for smaller screens to ensure it's visible */
+        top: auto; 
+        bottom: 10px;
         right: 10px;
-        left: 10px; /* Sur petits écrans, centre le toast */
+        left: 10px; 
         width: auto;
+        align-items: center; /* Centrer les toasts sur petits écrans */
     }
 
     .toast {
