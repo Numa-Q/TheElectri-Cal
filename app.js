@@ -8,7 +8,17 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.48.6"; // INCEMENTATION : Ajout de la fonctionnalité de vérification des versions des librairies
+// MODIFIÉ : Version de l'application mise à jour pour inclure les dernières corrections et fonctionnalités
+const APP_VERSION = "v20.48.7.1"; 
+
+// MODIFIÉ : Informations sur les versions des librairies pour la vérification manuelle
+const LIBRARIES_INFO = [
+    { name: "FullCalendar", currentVersion: "6.1.17", latestKnownVersion: "6.1.17", recommendation: "À jour", sourceUrl: "https://fullcalendar.io/" },
+    { name: "Day.js", currentVersion: "1.11.10", latestKnownVersion: "1.11.11", recommendation: "Mise à jour mineure recommandée", sourceUrl: "https://day.js.org/" },
+    { name: "Font Awesome", currentVersion: "5.15.4", latestKnownVersion: "6.5.2", recommendation: "Mise à jour majeure recommandée", sourceUrl: "https://fontawesome.com/" },
+    { name: "jsPDF", currentVersion: "2.5.1", latestKnownVersion: "2.10.0", recommendation: "Mise à jour mineure recommandée (correction de bugs)", sourceUrl: "https://parall.ax/products/jspdf" }
+];
+
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -26,40 +36,6 @@ const STORE_PEOPLE = 'people';
 const STORE_EVENTS = 'events';
 const STORE_PDF_GENERATION = 'pdfData'; // Nouveau store pour les données PDF temporaires
 let db;
-
-// Informations sur les librairies utilisées (mise à jour manuelle)
-const LIBRARIES_INFO = [
-    {
-        name: "FullCalendar",
-        currentVersion: "6.1.17",
-        latestKnownVersion: "6.1.17", // Mettre à jour manuellement
-        recommendation: "À jour",
-        sourceUrl: "https://fullcalendar.io/"
-    },
-    {
-        name: "Day.js",
-        currentVersion: "1.11.10",
-        latestKnownVersion: "1.11.10", // Mettre à jour manuellement
-        recommendation: "À jour",
-        sourceUrl: "https://day.js.org/"
-    },
-    {
-        name: "Font Awesome",
-        currentVersion: "5.15.4",
-        latestKnownVersion: "6.x.x", // Exemple: une version plus récente majeure existe
-        recommendation: "Mise à jour recommandée (si compatible)",
-        sourceUrl: "https://fontawesome.com/"
-    },
-    {
-        name: "jsPDF",
-        currentVersion: "2.10.0",
-        latestKnownVersion: "2.10.0", // Mettre à jour manuellement
-        recommendation: "À jour",
-        sourceUrl: "https://parall.ax/products/jspdf"
-    }
-    // Ajoutez d'autres librairies ici au besoin
-];
-
 
 // Fonction pour ouvrir la base de données IndexedDB
 function openDB() {
@@ -205,7 +181,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const showStatsBtn = document.getElementById('showStatsBtn');
     if (showStatsBtn) showStatsBtn.addEventListener('click', showStatsModal);
 
-    // Nouveau bouton pour la vérification des versions
+    // MODIFIÉ : Gestionnaire d'événement pour le bouton de vérification des versions de librairies
     const showLibraryVersionsBtn = document.getElementById('showLibraryVersionsBtn');
     if (showLibraryVersionsBtn) showLibraryVersionsBtn.addEventListener('click', showLibraryVersionsModal);
 });
@@ -400,6 +376,49 @@ function createDatePicker(id, label, value = '', required = false, dataAttrs = {
     `;
 }
 
+// MODIFIÉ : Fonction pour afficher la modale des versions des librairies
+function showLibraryVersionsModal() {
+    let contentHtml = `
+        <p>Voici les informations sur les versions des principales librairies utilisées par ${APP_NAME}.</p>
+        <div class="table-container">
+            <table class="library-versions-table">
+                <thead>
+                    <tr>
+                        <th>Librairie</th>
+                        <th>Version Actuelle</th>
+                        <th>Dernière Version Connue</th>
+                        <th>Recommandation</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    LIBRARIES_INFO.forEach(lib => {
+        contentHtml += `
+            <tr>
+                <td>${lib.name}</td>
+                <td>${lib.currentVersion}</td>
+                <td>${lib.latestKnownVersion}</td>
+                <td><span class="${lib.recommendation.includes('À jour') ? 'status-ok' : 'status-update'}">${lib.recommendation}</span></td>
+                <td><a href="${lib.sourceUrl}" target="_blank" rel="noopener noreferrer">${new URL(lib.sourceUrl).hostname}</a></td>
+            </tr>
+        `;
+    });
+
+    contentHtml += `
+                </tbody>
+            </table>
+        </div>
+        <p class="note">Note : Les "dernières versions connues" sont renseignées manuellement et peuvent ne pas refléter la toute dernière version disponible au moment de la consultation.</p>
+    `;
+
+    showModal(
+        'Versions des Librairies',
+        contentHtml,
+        [{ text: 'Fermer', onclick: 'closeModal()', class: 'button-secondary' }]
+    );
+}
 
 // --- Fonctions de gestion des personnes (maintenant avec IndexedDB) ---
 async function savePeople() {
@@ -1131,11 +1150,10 @@ async function preparePdfDataAndGeneratePdf() {
         await clearStore(STORE_PDF_GENERATION); // Nettoie le store temporaire
 
         // Agrégation des données par jour (incluant tous les jours de la semaine)
-        const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: new Set(), backup: new Set() } }
+        const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: new Set(), permanence_backup: new Set() } }
         let tempDate = dayjs(startDate);
         while (tempDate.isSameOrBefore(endDate, 'day')) {
-            // CORRECTION: Initialiser 'backup' comme un Set vide
-            dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), backup: new Set() }; 
+            dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), permanence_backup: new Set() };
             tempDate = tempDate.add(1, 'day');
         }
 
@@ -1160,7 +1178,7 @@ async function preparePdfDataAndGeneratePdf() {
                     if (event.type === 'permanence') {
                         dailyPermanences[dateKey].permanence.add(person.name);
                     } else if (event.type === 'permanence_backup') {
-                        dailyPermanences[dateKey].backup.add(person.name); // Utiliser 'backup' consistent avec l'initialisation
+                        dailyPermanences[dateKey].permanence_backup.add(person.name);
                     }
                 }
                 day = day.add(1, 'day');
@@ -1181,7 +1199,7 @@ async function preparePdfDataAndGeneratePdf() {
                 date: dateKey, // KeyPath
                 dayOfWeekFr: formattedDayOfWeek,
                 permanenceNames: Array.from(dayData.permanence).join(', '),
-                backupNames: Array.from(dayData.backup).join(', '),
+                backupNames: Array.from(dayData.permanence_backup).join(', '),
                 isWeekend: isWeekend
             });
         }
@@ -1200,13 +1218,17 @@ async function preparePdfDataAndGeneratePdf() {
 // MODIFIÉ : Fonction pour générer le PDF du planning des permanences en tableau
 // Elle lit maintenant les données pré-formatées de IndexedDB et gère tous les jours
 async function generatePermanencePdfTable(startDate, endDate) {
-    if (typeof jspdf === 'undefined') {
-        showToast("La bibliothèque jsPDF n'est pas chargée. L'export PDF est impossible.", "error", 5000);
-        console.error("jsPDF is not loaded. Make sure the script is included.");
+    // MODIFIÉ : Vérifier si jsPDF est chargé, en testant les noms de variables globales courants
+    // La bibliothèque jsPDF peut s'exposer sous 'window.jsPDF' ou 'window.jspdf' (plus courant pour les versions 2.x)
+    const jsPDFLib = window.jsPDF || window.jspdf;
+
+    if (typeof jsPDFLib === 'undefined') {
+        showToast("La bibliothèque jsPDF n'est pas chargée. L'export PDF est impossible. Assurez-vous que le script jsPDF est correctement inclus.", "error", 7000);
+        console.error("jsPDFLib (window.jsPDF ou window.jspdf) est undefined. Vérifiez l'inclusion du script et son chargement.");
         return;
     }
 
-    const doc = new jspdf.jsPDF('l', 'mm', 'a4'); // 'l' pour paysage
+    const doc = new jsPDFLib.jsPDF('l', 'mm', 'a4'); // 'l' pour paysage
     doc.setFont('helvetica'); // Use a standard font
 
     const margin = 10; // mm
@@ -1247,13 +1269,13 @@ async function generatePermanencePdfTable(startDate, endDate) {
             docInstance.setTextColor(PDF_DEFAULT_TEXT_COLOR);
             const generatedTime = dayjs().format('DD/MM/YYYY HH:mm');
             docInstance.text(`Généré le: ${generatedTime}`, margin, pageHeight - margin + 3, { align: 'left' });
-            docInstance.text(`Page ${currentPageNum}/${totalPages}`, pageWidth - margin, pageHeight - margin + 3, { align: 'right' }); 
+            docInstance.text(`Page ${currentPageNum}/${totalPages || 0}`, pageWidth - margin, pageHeight - margin + 3, { align: 'right' });
         }
         
         return margin + 15; // Retourne la position Y après l'en-tête
     };
 
-    console.log("Day.js current locale at PDF generation start:", dayjs.locale()); 
+    console.log("Day.js current locale at PDF generation start:", dayjs.locale()); // Debugging: Check current locale
 
     // Lire les données pré-formatées depuis IndexedDB
     const pdfData = await getAllItems(STORE_PDF_GENERATION);
@@ -1370,14 +1392,13 @@ async function generatePermanencePdfTable(startDate, endDate) {
     }
 
     // --- Deuxième passage pour ajouter la pagination et l'horodatage corrects ---
-    const totalPages = doc.internal.getNumberOfPages(); 
+    const totalPages = doc.internal.pages.length;
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
         addPageLayout(doc, i, totalPages, false); // Redessine le pied de page avec le nombre total de pages correct (isFirstPass = false)
     }
 
-    // MODIFIÉ : Ajout de la date et l'heure de création dans le nom du fichier PDF
-    doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}_${dayjs().format('YYYY-MM-DD_HHmmss')}.pdf`);
+    doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}.pdf`);
     showToast('Le PDF du planning des permanences a été généré !', 'success');
 }
 
@@ -1461,7 +1482,6 @@ function displayStatsTable(stats) {
     if (!statsResultsDiv) return;
 
     let tableHtml = `
-        <h3>Résultats pour la période du ${dayjs(document.getElementById('statsStartDate').value).format('DD/MM/YYYY')} au ${dayjs(document.getElementById('statsEndDate').value).format('DD/MM/YYYY')}</h3>
         <table class="stats-table">
             <thead>
                 <tr>
@@ -1472,20 +1492,18 @@ function displayStatsTable(stats) {
             <tbody>
     `;
 
-    const sortedStats = Object.values(stats).sort((a, b) => b.permanenceDays - a.permanenceDays);
+    // Afficher toutes les personnes, même si permanenceDays est à 0
+    // Trier les personnes par nom avant d'afficher
+    const sortedPeopleStats = Object.values(stats).sort((a, b) => a.name.localeCompare(b.name));
 
-    if (sortedStats.length === 0) {
-        tableHtml += `<tr><td colspan="2">Aucune donnée disponible pour cette période ou aucune personne enregistrée.</td></tr>`;
-    } else {
-        sortedStats.forEach(stat => {
-            tableHtml += `
-                <tr>
-                    <td>${stat.name}</td>
-                    <td>${stat.permanenceDays}</td>
-                </tr>
-            `;
-        });
-    }
+    sortedPeopleStats.forEach(stat => {
+        tableHtml += `
+            <tr>
+                <td>${stat.name}</td>
+                <td>${stat.permanenceDays}</td>
+            </tr>
+        `;
+    });
 
     tableHtml += `
             </tbody>
@@ -1497,7 +1515,6 @@ function displayStatsTable(stats) {
     statsResultsDiv.innerHTML = tableHtml;
 }
 
-
 function exportStatsAsCsv() {
     const statsResultsDiv = document.getElementById('statsResults');
     const table = statsResultsDiv ? statsResultsDiv.querySelector('table') : null;
@@ -1508,12 +1525,6 @@ function exportStatsAsCsv() {
     }
 
     let csv = [];
-    // MODIFICATION ICI : Ajout de la période sélectionnée
-    const startDate = document.getElementById('statsStartDate').value;
-    const endDate = document.getElementById('statsEndDate').value;
-    csv.push(`Période sélectionnée du: ${dayjs(startDate).format('DD/MM/YYYY')} au: ${dayjs(endDate).format('DD/MM/YYYY')}`);
-    csv.push(''); // Ligne vide pour la clarté
-
     // Headers
     const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.innerText);
     csv.push(headers.join(';')); // Use semicolon for CSV (common in France)
@@ -1535,41 +1546,4 @@ function exportStatsAsCsv() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast('Statistiques de permanence exportées en CSV !', 'success');
-}
-
-// Nouvelle fonction pour afficher les versions des librairies
-function showLibraryVersionsModal() {
-    let content = `
-        <p>Cette section affiche les versions des principales librairies utilisées par l'application. Les informations sur les "Dernières Versions Connues" sont mises à jour manuellement par les développeurs.</p>
-        <table class="stats-table">
-            <thead>
-                <tr>
-                    <th>Librairie</th>
-                    <th>Version Actuelle</th>
-                    <th>Dernière Version Connue</th>
-                    <th>Recommandation</th>
-                    <th>Source</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    LIBRARIES_INFO.forEach(lib => {
-        content += `
-            <tr>
-                <td>${lib.name}</td>
-                <td>${lib.currentVersion}</td>
-                <td>${lib.latestKnownVersion}</td>
-                <td>${lib.recommendation}</td>
-                <td><a href="${lib.sourceUrl}" target="_blank">Lien</a></td>
-            </tr>
-        `;
-    });
-
-    content += `
-            </tbody>
-        </table>
-    `;
-
-    showModal('Vérification des Versions des Librairies', content, [{ text: 'Fermer', onclick: 'closeModal()', class: 'button-secondary' }]);
 }
