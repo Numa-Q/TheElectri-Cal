@@ -8,7 +8,7 @@ Ajouter la période sélectionnée en en tête de fichier
 ajouter la date et l'heure d'exporta dans le nom de fichier (?)
 
 ### Export pdf 
-ajouter la date et l'heure d'export dans le nom de fichier
+~~ajouter la date et l'heure d'export dans le nom de fichier~~ V20.48.4 
 
 ### Controle de version/dette technique.
 Mecanisme de vérification des librairies utilisées
