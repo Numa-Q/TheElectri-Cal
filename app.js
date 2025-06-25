@@ -8,8 +8,8 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-// MODIFIÉ : Version de l'application mise à jour pour inclure la fonctionnalité d'exportation PNG
-const APP_VERSION = "v20.52.0";
+// MODIFIÉ : Version de l'application mise à jour pour inclure les dernières corrections et fonctionnalités
+const APP_VERSION = "v20.52.3";
 
 // MODIFIÉ : Informations sur les versions des librairies pour la vérification manuelle
 const LIBRARIES_INFO = [
@@ -389,7 +389,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // Fonctions de persistance des données via IndexedDB
 let db;
 const DB_NAME = 'ElectriCalDB';
-const DB_VERSION = 1;
+// MODIFIÉ : Mettre à jour la version de la base de données
+const DB_VERSION = 2; // Changer de 1 à 2
 const STORE_NAME_PEOPLE = 'people';
 const STORE_NAME_EVENTS = 'events';
 
