@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.48.3"; // INCEMENTATION : Correction de la double pagination du PDF et mise à jour de la version
+const APP_VERSION = "v20.48.4"; // INCEMENTATION : Ajout de la date et heure de création PDF dans le nom de fichier
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -1337,7 +1337,8 @@ async function generatePermanencePdfTable(startDate, endDate) {
         addPageLayout(doc, i, totalPages, false); // Redessine le pied de page avec le nombre total de pages correct (isFirstPass = false)
     }
 
-    doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}.pdf`);
+    // MODIFIÉ : Ajout de la date et l'heure de création dans le nom du fichier PDF
+    doc.save(`planning_permanences_${startDate.format('YYYY-MM-DD')}_${endDate.format('YYYY-MM-DD')}_${dayjs().format('YYYY-MM-DD_HHmmss')}.pdf`);
     showToast('Le PDF du planning des permanences a été généré !', 'success');
 }
 
