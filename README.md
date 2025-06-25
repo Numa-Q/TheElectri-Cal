@@ -17,6 +17,9 @@ Mecanisme de vérification des librairies utilisées
 Appliquer les mesures OWASP
 Faire un rapport des mesures applicables, appliquées
 
+## Déplacer toasts
+Pour une meilleure lecture les toasts devraient s'afficher en bas de page, pas en haut.
+
 ## PDF jours en anglais
 Oui, la ligne `Day.js current locale at PDF generation start: en` dans la console indique que la locale globale de Day.js est actuellement définie sur l'anglais au moment où ce message est enregistré dans la fonction `generatePermanencePdfTable`.
 
