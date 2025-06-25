@@ -17,7 +17,7 @@ const LIBRARIES_INFO = [
     { name: "Day.js", currentVersion: "1.11.10", latestKnownVersion: "1.11.11", recommendation: "Mise à jour mineure recommandée", sourceUrl: "https://day.js.org/" },
     { name: "Font Awesome", currentVersion: "5.15.4", latestKnownVersion: "6.5.2", recommendation: "Mise à jour majeure recommandée", sourceUrl: "https://fontawesome.com/" },
     { name: "jsPDF", currentVersion: "2.5.1", latestKnownVersion: "2.10.0", recommendation: "Mise à jour mineure recommandée (correction de bugs)", sourceUrl: "https://parall.ax/products/jspdf" },
-    { name: "html2canvas", currentVersion: "1.4.1", latestKnownVersion: "1.4.1", recommendation: "Ajouté", sourceUrl: "https://html2canvas.hertzen.com/" } // NOUVEAU : Ajout de html2canvas
+    { name: "html2canvas", currentVersion: "1.4.1", latestKnownVersion: "1.4.1", recommendation: "Ajouté", sourceUrl: "https://html2canvas.hertzen.com/" }
 ];
 
 // Fonction utilitaire pour afficher les toasts
@@ -412,66 +412,79 @@ function openDB() {
             resolve();
         };
 
+        // CORRIGÉ : Amélioration de la gestion des erreurs et du message d'erreur
         request.onerror = (event) => {
-            console.error("Erreur d'ouverture de la base de données :", event.target.errorCode);
-            showToast("Erreur d'ouverture de la base de données locale.", "error");
-            reject(event.target.errorCode);
+            console.error("Erreur d'ouverture de la base de données :", event.target.error.name, event.target.error.message, event.target.error);
+            showToast("Erreur d'ouverture de la base de données locale. L'accès au stockage est peut-être bloqué.", "error");
+            reject(event.target.error); // Rejeter avec l'objet d'erreur complet
         };
     });
 }
 
 async function loadData() {
-    await openDB();
-    const transaction = db.transaction([STORE_NAME_PEOPLE, STORE_NAME_EVENTS], 'readonly');
-    const peopleStore = transaction.objectStore(STORE_NAME_PEOPLE);
-    const eventsStore = transaction.objectStore(STORE_NAME_EVENTS);
+    // CORRIGÉ : Ajout d'un bloc try...catch pour gérer les rejets de openDB()
+    try {
+        await openDB();
+        const transaction = db.transaction([STORE_NAME_PEOPLE, STORE_NAME_EVENTS], 'readonly');
+        const peopleStore = transaction.objectStore(STORE_NAME_PEOPLE);
+        const eventsStore = transaction.objectStore(STORE_NAME_EVENTS);
 
-    const peopleRequest = peopleStore.getAll();
-    const eventsRequest = eventsStore.getAll();
+        const peopleRequest = peopleStore.getAll();
+        const eventsRequest = eventsStore.getAll();
 
-    peopleRequest.onsuccess = (event) => {
-        people = event.target.result || [];
-        refreshPeopleList();
-    };
+        peopleRequest.onsuccess = (event) => {
+            people = event.target.result || [];
+            refreshPeopleList();
+        };
 
-    eventsRequest.onsuccess = (event) => {
-        allCalendarEvents = event.target.result || [];
-        if (calendar) {
-            calendar.refetchEvents(); // Rafraîchir FullCalendar avec les événements chargés
-        }
-    };
+        eventsRequest.onsuccess = (event) => {
+            allCalendarEvents = event.target.result || [];
+            if (calendar) {
+                calendar.refetchEvents(); // Rafraîchir FullCalendar avec les événements chargés
+            }
+        };
 
-    peopleRequest.onerror = eventsRequest.onerror = (event) => {
-        console.error("Erreur de chargement des données :", event.target.errorCode);
-        showToast("Erreur de chargement des données locales.", "error");
-    };
+        peopleRequest.onerror = eventsRequest.onerror = (event) => {
+            console.error("Erreur de chargement des données depuis les stores :", event.target.error);
+            showToast("Erreur de chargement des données locales.", "error");
+        };
+    } catch (error) {
+        console.error("Erreur lors de l'initialisation du chargement des données (DB non ouverte) :", error);
+        // Le showToast est déjà fait dans openDB().onerror
+    }
 }
 
 async function saveData() {
-    await openDB();
-    const transaction = db.transaction([STORE_NAME_PEOPLE, STORE_NAME_EVENTS], 'readwrite');
-    const peopleStore = transaction.objectStore(STORE_NAME_PEOPLE);
-    const eventsStore = transaction.objectStore(STORE_NAME_EVENTS);
+    // CORRIGÉ : Ajout d'un bloc try...catch pour gérer les rejets de openDB()
+    try {
+        await openDB();
+        const transaction = db.transaction([STORE_NAME_PEOPLE, STORE_NAME_EVENTS], 'readwrite');
+        const peopleStore = transaction.objectStore(STORE_NAME_PEOPLE);
+        const eventsStore = transaction.objectStore(STORE_NAME_EVENTS);
 
-    peopleStore.clear(); // Vider le store avant d'ajouter les nouvelles données
-    allCalendarEvents.forEach(event => {
-        // Supprimer les propriétés non nécessaires pour la persistance si elles sont ajoutées par FullCalendar lui-même
-        const simplifiedEvent = { ...event };
-        delete simplifiedEvent._instance; // Propriété ajoutée par FullCalendar
-        delete simplifiedEvent._def;     // Propriété ajoutée par FullCalendar
-        eventsStore.put(simplifiedEvent);
-    });
+        peopleStore.clear(); // Vider le store avant d'ajouter les nouvelles données
+        allCalendarEvents.forEach(event => {
+            // Supprimer les propriétés non nécessaires pour la persistance si elles sont ajoutées par FullCalendar lui-même
+            const simplifiedEvent = { ...event };
+            delete simplifiedEvent._instance; // Propriété ajoutée par FullCalendar
+            delete simplifiedEvent._def;     // Propriété ajoutée par FullCalendar
+            eventsStore.put(simplifiedEvent);
+        });
 
-    people.forEach(person => peopleStore.put(person));
+        people.forEach(person => peopleStore.put(person));
 
-    transaction.oncomplete = () => {
-        console.log("Données sauvegardées.");
-    };
+        transaction.oncomplete = () => {
+            console.log("Données sauvegardées.");
+        };
 
-    transaction.onerror = (event) => {
-        console.error("Erreur de sauvegarde des données :", event.target.errorCode);
-        showToast("Erreur de sauvegarde des données locales.", "error");
-    };
+        transaction.onerror = (event) => {
+            console.error("Erreur de sauvegarde des données dans les stores :", event.target.error);
+            showToast("Erreur de sauvegarde des données locales.", "error");
+        };
+    } catch (error) {
+        console.error("Erreur lors de l'initialisation de la sauvegarde des données (DB non ouverte) :", error);
+        // Le showToast est déjà fait dans openDB().onerror
+    }
 }
 
 // Fonction d'exportation JSON
