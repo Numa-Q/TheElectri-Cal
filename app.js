@@ -8,7 +8,7 @@ let allCalendarEvents = []; // Stocke tous les événements pour filtrage
 
 // Constante pour le nom et la version de l'application
 const APP_NAME = "The Electri-Cal";
-const APP_VERSION = "v20.48.5.1"; // INCEMENTATION : Ajout de la période sélectionnée dans l'export CSV des stats
+const APP_VERSION = "v20.48.5.2"; // INCEMENTATION : Correction du bug d'export PDF (TypeError: Cannot read properties of undefined (reading 'add'))
 
 // Définition des couleurs des événements par type
 const EVENT_COLORS = {
@@ -1093,10 +1093,11 @@ async function preparePdfDataAndGeneratePdf() {
         await clearStore(STORE_PDF_GENERATION); // Nettoie le store temporaire
 
         // Agrégation des données par jour (incluant tous les jours de la semaine)
-        const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: new Set(), permanence_backup: new Set() } }
+        const dailyPermanences = {}; // { 'YYYY-MM-DD': { permanence: new Set(), backup: new Set() } }
         let tempDate = dayjs(startDate);
         while (tempDate.isSameOrBefore(endDate, 'day')) {
-            dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), permanence_backup: new Set() };
+            // CORRECTION: Initialiser 'backup' comme un Set vide
+            dailyPermanences[tempDate.format('YYYY-MM-DD')] = { permanence: new Set(), backup: new Set() }; 
             tempDate = tempDate.add(1, 'day');
         }
 
@@ -1121,7 +1122,7 @@ async function preparePdfDataAndGeneratePdf() {
                     if (event.type === 'permanence') {
                         dailyPermanences[dateKey].permanence.add(person.name);
                     } else if (event.type === 'permanence_backup') {
-                        dailyPermanences[dateKey].backup.add(person.name); // Correction: changed from permanence_backup to backup
+                        dailyPermanences[dateKey].backup.add(person.name); // Utiliser 'backup' consistent avec l'initialisation
                     }
                 }
                 day = day.add(1, 'day');
