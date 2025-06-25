@@ -1,3 +1,4 @@
+
 /* style.css */
 
 /* Réinitialisation de base pour inclure padding et border dans la largeur/hauteur */
@@ -22,256 +23,340 @@
     --toast-error-bg: #dc3545;
     --toast-text-color: white;
     --footer-bg: rgba(255, 255, 255, 0.2);
-    --fullcalendar-header-bg: #e9a600; /* Assurez-vous que c'est défini */
-    --fullcalendar-border-color: #ddd;
-    --fullcalendar-event-bg: #ff7f50; /* Couleur d'événement par défaut */
-    --fullcalendar-event-text: white;
-    --input-bg: #fff;
+    --input-bg: #f5f5f5;
     --input-border: #ccc;
-    --input-focus-border: #ff7f50;
+    --input-focus-border: #888;
+    --fullcalendar-border: #e0e0e0; /* Couleur des bordures pour FullCalendar */
+    --fullcalendar-bg: #ffffff; /* Fond des jours pour FullCalendar */
+    --fullcalendar-text: #333; /* Texte des jours pour FullCalendar */
+    --fullcalendar-header-bg: #f0f0f0; /* Fond de l'en-tête du calendrier */
 }
 
 /* Variables CSS pour les couleurs du thème sombre */
-.dark-mode {
-    --bg-gradient-start: #333;
-    --bg-gradient-end: #1a1a1a;
-    --main-bg-color: rgba(0, 0, 0, 0.6);
+body.dark-mode {
+    --bg-gradient-start: #2c3e50; /* Bleu foncé */
+    --bg-gradient-end: #34495e;   /* Gris-bleu foncé */
+    --main-bg-color: rgba(0, 0, 0, 0.4);
     --border-color: rgba(255, 255, 255, 0.1);
-    --text-color: #f0f0f0;
-    --header-bg: #222;
-    --button-bg: #555;
-    --button-hover-bg: #777;
+    --text-color: #f5f5f5;
+    --header-bg: #1a252f;
+    --button-bg: #4a69bd; /* Un bleu plus profond */
+    --button-hover-bg: #3a57a0;
     --sidebar-text-color: #ddd;
-    --modal-bg: rgba(0, 0, 0, 0.9);
-    --toast-info-bg: #0e6c7c;
-    --toast-success-bg: #1a6e2e;
-    --toast-error-bg: #9c2738;
+    --modal-bg: rgba(0, 0, 0, 0.8);
+    --toast-info-bg: #117a8b;
+    --toast-success-bg: #1e7e34;
+    --toast-error-bg: #bd2130;
     --toast-text-color: white;
     --footer-bg: rgba(0, 0, 0, 0.2);
-    --fullcalendar-header-bg: #444;
-    --fullcalendar-border-color: #555;
-    --fullcalendar-event-bg: #555;
-    --fullcalendar-event-text: white;
     --input-bg: #333;
-    --input-border: #666;
-    --input-focus-border: #777;
+    --input-border: #555;
+    --input-focus-border: #888;
+    --fullcalendar-border: #555;
+    --fullcalendar-bg: #333;
+    --fullcalendar-text: #f5f5f5;
+    --fullcalendar-header-bg: #2a2a2a;
 }
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     margin: 0;
     padding: 0;
-    background: linear-gradient(to right, var(--bg-gradient-start), var(--bg-gradient-end));
+    background: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-end));
     color: var(--text-color);
-    min-height: 100vh;
+    min-height: 100vh; /* S'assure que le dégradé couvre toute la hauteur */
+    display: flex;
+    flex-direction: column; /* Permet au footer de rester en bas */
+}
+
+/* Styles pour le conteneur principal */
+main {
+    display: flex;
+    flex: 1; /* Permet au main de prendre l'espace restant */
+    padding: 20px;
+    gap: 20px;
+    max-width: 1500px; 
+    width: calc(100% - 40px); 
+    margin: 20px auto; 
+    background: var(--main-bg-color);
+    border-radius: 15px;
+    backdrop-filter: blur(10px); 
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+}
+
+.sidebar {
+    flex: 0 0 280px; 
+    min-width: 280px; 
+    background: var(--main-bg-color); 
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
     display: flex;
     flex-direction: column;
+    gap: 15px;
+    border: 1px solid var(--border-color);
+}
+
+.sidebar h2 {
+    color: var(--text-color);
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.4em;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1; 
+    overflow-y: auto; 
+    overflow-x: hidden; 
+}
+
+.sidebar li {
+    background: rgba(255, 255, 255, 0.15); 
+    padding: 10px 15px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.3); 
+    transition: background-color 0.2s ease;
+    color: var(--sidebar-text-color);
+    min-height: 45px; 
+    overflow: hidden; 
+    white-space: nowrap; 
+}
+
+.sidebar li span {
+    flex-grow: 1; 
+    min-width: 0; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    white-space: nowrap; 
+}
+
+
+.dark-mode .sidebar li {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar li:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark-mode .sidebar li:hover {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.person-hidden {
+    opacity: 0.6;
+    font-style: italic;
+}
+
+.person-actions button {
+    background-color: var(--button-bg); 
+    border: 1px solid var(--button-bg); 
+    color: white; 
+    cursor: pointer;
+    margin-left: 5px;
+    font-size: 0.9em;
+    padding: 5px;
+    border-radius: 5px;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+    display: inline-flex; 
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; 
+}
+
+.person-actions button:hover {
+    background-color: var(--button-hover-bg);
+    border-color: var(--button-hover-bg);
+    transform: translateY(-1px); 
+}
+
+.person-actions button i {
+    color: inherit; 
+}
+
+
+.main-content {
+    flex: 1; 
+    background: var(--main-bg-color);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-color);
+    display: flex; 
+    flex-direction: column;
+}
+
+.main-content h2 {
+    color: var(--text-color);
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 1.4em;
+}
+
+#calendar {
+    flex-grow: 1; 
+    padding-top: 15px;
+    --fc-border-color: var(--fullcalendar-border);
+    --fc-neutral-bg-color: var(--fullcalendar-bg);
+    --fc-daygrid-event-dot-width: 8px; 
+    color: var(--fullcalendar-text); 
+}
+
+.fc-button {
+    background-color: var(--button-bg) !important;
+    border-color: var(--button-bg) !important;
+    color: white !important;
+    text-transform: capitalize !important; 
+}
+
+.fc-button:hover {
+    background-color: var(--button-hover-bg) !important;
+    border-color: var(--button-hover-bg) !important;
+}
+
+.fc-daygrid-day-number {
+    color: var(--fullcalendar-text);
+}
+
+.fc-col-header-cell {
+    background-color: var(--fullcalendar-header-bg);
+    color: var(--fullcalendar-text);
+}
+
+.fc-event {
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 0.85em;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: normal; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
 }
 
 header {
     background-color: var(--header-bg);
     color: white;
-    padding: 20px;
+    padding: 15px 20px;
     text-align: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-main {
-    display: flex;
-    flex: 1; /* Permet au contenu principal de prendre l'espace disponible */
-    padding: 20px;
-    gap: 20px;
-}
-
-.sidebar {
-    width: 250px;
-    background-color: var(--main-bg-color);
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    color: var(--sidebar-text-color); /* Couleur spécifique pour le texte de la sidebar */
-}
-
-.sidebar h2, .sidebar h3 {
-    color: var(--text-color);
-    margin-top: 0;
-    margin-bottom: 15px;
-}
-
-.sidebar button {
-    background-color: var(--button-bg);
-    color: white;
-    border: none;
-    padding: 10px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.3s ease;
-}
-
-.sidebar button:hover {
-    background-color: var(--button-hover-bg);
-}
-
-.people-list-container {
-    margin-top: 20px;
-    padding: 15px;
-    border-radius: 8px;
-    background-color: var(--main-bg-color); /* Utilise la même couleur que la sidebar pour harmoniser */
-    flex-grow: 1; /* Permet à la liste de personnes de prendre l'espace restant */
-}
-
-.people-list-container h3 {
-    margin-top: 0;
-    color: var(--text-color);
-}
-
-#peopleList {
-    list-style: none;
-    padding: 0;
-    max-height: 300px; /* Hauteur maximale pour la liste des personnes */
-    overflow-y: auto; /* Ajoute une barre de défilement si la liste est trop longue */
-}
-
-#peopleList li {
-    background-color: var(--input-bg);
-    border: 1px solid var(--border-color);
-    padding: 8px 12px;
-    margin-bottom: 5px;
-    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    color: var(--text-color);
 }
 
-#peopleList li .person-actions button {
-    background: none;
-    border: none;
-    color: var(--button-bg);
+header h1 {
+    margin: 0;
+    font-size: 1.8em;
+    flex-grow: 1;
+}
+
+#addPersonBtn,
+#addPlanningEventBtn,
+#exportPdfBtn,
+#exportPngBtn,
+#exportJsonBtn,
+#importJsonBtn,
+#showStatsBtn,
+#showLibraryVersionsBtn, 
+#themeToggleButton {
+    background-color: var(--button-bg);
+    color: white;
+    border: none; 
+    padding: 8px 15px;
+    border-radius: 5px;
     cursor: pointer;
-    font-size: 0.9em;
-    margin-left: 10px;
-    padding: 5px;
-    transition: color 0.3s ease;
-}
-
-#peopleList li .person-actions button:hover {
-    color: var(--button-hover-bg);
-}
-
-
-.main-content {
-    flex: 1; /* Permet au contenu principal de prendre l'espace disponible */
-    background-color: var(--main-bg-color);
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-#calendar {
-    max-width: 100%;
-    height: 100%; /* FullCalendar gère sa propre hauteur via JS */
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: var(--input-bg); /* S'assure que le fond du calendrier est cohérent */
-    padding: 10px; /* Petit padding pour éviter que le calendrier ne touche les bords */
-    border-radius: 8px;
-}
-
-/* Styles spécifiques à FullCalendar pour le thème */
-.fc .fc-toolbar-title,
-.fc .fc-col-header-cell-cushion,
-.fc .fc-daygrid-day-number,
-.fc .fc-list-item-title a,
-.fc .fc-list-event-title {
-    color: var(--text-color);
-}
-
-.fc-button-primary {
-    background-color: var(--button-bg) !important;
-    border-color: var(--button-bg) !important;
-    color: white !important;
-}
-
-.fc-button-primary:hover {
-    background-color: var(--button-hover-bg) !important;
-    border-color: var(--button-hover-bg) !important;
-}
-
-.fc-day-other .fc-daygrid-day-number {
-    opacity: 0.5; /* Rendre les jours des mois précédents/suivants moins visibles */
-}
-
-.fc-event {
-    background-color: var(--fullcalendar-event-bg) !important;
-    color: var(--fullcalendar-event-text) !important;
-    border: none !important;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-size: 0.85em;
-    cursor: pointer;
-}
-
-.fc-event-title-container {
-    white-space: normal !important; /* Permet au texte des événements de s'enrouler */
-}
-
-.fc-daygrid-event-dot {
-    display: none !important; /* Cache les points des événements */
-}
-
-.fc-h-event .fc-event-main {
-    color: var(--fullcalendar-event-text); /* Assure que le texte des événements est blanc */
-}
-
-/* Couleur de fond des en-têtes de FullCalendar */
-.fc-theme-standard th {
-    background-color: var(--fullcalendar-header-bg);
-    color: var(--text-color);
-}
-
-.fc-scrollgrid-sync-table {
-    border: 1px solid var(--fullcalendar-border-color);
-}
-
-/* Styles pour les modales génériques */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5); /* Fond semi-transparent */
-    display: flex;
-    justify-content: center;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    display: flex; 
     align-items: center;
-    z-index: 1000; /* Au-dessus de tout le reste */
+    justify-content: center;
+    gap: 5px; 
+    text-align: center; 
+    font-size: 0.9em; 
+}
+
+#addPersonBtn:hover,
+#addPlanningEventBtn:hover,
+#exportPdfBtn:hover,
+#exportPngBtn:hover,
+#exportJsonBtn:hover,
+#importJsonBtn:hover,
+#showStatsBtn:hover,
+#showLibraryVersionsBtn:hover, 
+#themeToggleButton:hover {
+    background-color: var(--button-hover-bg);
+    transform: translateY(-1px);
+}
+
+
+footer {
+    background-color: var(--footer-bg);
+    color: var(--text-color);
+    padding: 10px 20px;
+    text-align: center;
+    font-size: 0.8em;
+    margin-top: 20px; 
+}
+
+
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 1000; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.4); 
+    justify-content: center; 
+    align-items: center; 
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.modal.show {
+    opacity: 1;
 }
 
 .modal-content {
-    background-color: var(--modal-bg); /* Utilise la variable du thème */
-    padding: 30px;
+    background-color: var(--modal-bg);
+    margin: auto;
+    padding: 25px;
+    border: 1px solid var(--border-color);
     border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
     width: 90%;
     max-width: 600px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    max-height: 90vh; /* Empêche la modale de dépasser la hauteur de l'écran */
-    overflow-y: auto; /* Ajoute un scroll si le contenu est trop grand */
+    transform: translateY(-20px);
+    opacity: 0;
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
+
+.modal.show .modal-content {
+    transform: translateY(0);
+    opacity: 1;
+}
+
 
 .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border-color);
-    padding-bottom: 15px;
+    padding-bottom: 10px;
     margin-bottom: 20px;
 }
 
@@ -281,301 +366,492 @@ main {
 }
 
 .close-button {
-    background: none;
-    border: none;
-    font-size: 2em;
-    cursor: pointer;
     color: var(--text-color);
-    line-height: 1;
-    padding: 0;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: color 0.2s ease;
 }
 
-.close-button:hover {
+.close-button:hover,
+.close-button:focus {
     color: var(--button-hover-bg);
+    text-decoration: none;
 }
 
 .modal-body {
+    margin-bottom: 20px;
+    max-height: 70vh; 
+    overflow-y: auto; 
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
     display: flex;
-    flex-direction: column;
-    gap: 15px;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
 .form-group {
-    display: flex;
-    flex-direction: column;
+    margin-bottom: 15px;
 }
 
 .form-group label {
+    display: block;
     margin-bottom: 5px;
     font-weight: bold;
     color: var(--text-color);
 }
 
-.form-control {
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
     padding: 10px;
     border: 1px solid var(--input-border);
     border-radius: 5px;
-    font-size: 1em;
     background-color: var(--input-bg);
     color: var(--text-color);
-    transition: border-color 0.3s ease;
+    font-size: 1em;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.form-control:focus {
-    outline: none;
+.form-group input[type="text"]:focus,
+.form-group input[type="date"]:focus,
+.form-group select:focus,
+.form-group textarea:focus {
     border-color: var(--input-focus-border);
-    box-shadow: 0 0 0 2px rgba(var(--input-focus-border-rgb, 255,127,80), 0.2); /* Fallback RGB if not defined */
+    box-shadow: 0 0 0 2px rgba(var(--button-bg-rgb, 255, 127, 80), 0.2); 
+    outline: none;
 }
 
-/* Pour le thème sombre, définissez les variables RGB pour le box-shadow */
-.dark-mode .form-control:focus {
-    --input-focus-border-rgb: 119,119,119; /* RGB for #777 */
+body.dark-mode .form-group input[type="text"]:focus,
+body.dark-mode .form-group input[type="date"]:focus,
+body.dark-mode .form-group select:focus,
+body.dark-mode .form-group textarea:focus {
+     box-shadow: 0 0 0 2px rgba(var(--button-bg-rgb, 74, 105, 189), 0.3); 
 }
 
-.modal-footer {
+
+.form-group textarea {
+    resize: vertical;
+}
+
+.checkbox-group {
     display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    border-top: 1px solid var(--border-color);
-    padding-top: 15px;
-    margin-top: 20px;
+    flex-wrap: wrap;
+    gap: 10px; /* Réduit l'espace entre les éléments du groupe */
+    margin-top: 10px;
 }
 
-.button-primary {
-    background-color: var(--button-bg);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.3s ease;
+/* NOUVEAU/MODIFIÉ: Styles pour les éléments de case à cocher individuels et les labels en ligne */
+.checkbox-item, 
+.checkbox-label-inline {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Espace entre la case à cocher et le label */
+    margin-bottom: 5px; /* Petit espace en dessous de chaque item */
 }
 
-.button-primary:hover {
-    background-color: var(--button-hover-bg);
-}
-
-.button-secondary {
-    background-color: transparent;
+.checkbox-item label, /* Pour createCheckbox */
+.checkbox-label-inline { /* Pour createCheckboxGroup */
+    font-weight: normal; /* Annule le gras du label de .form-group */
     color: var(--text-color);
-    border: 1px solid var(--button-bg);
+    cursor: pointer;
+    margin-bottom: 0; /* Annule la marge du label de .form-group */
+}
+
+.checkbox-item input[type="checkbox"],
+.checkbox-label-inline input[type="checkbox"] {
+    width: auto; /* Réinitialise la largeur pour les cases à cocher */
+    margin-right: 0; /* Enlève la marge droite, gérée par gap */
+    accent-color: var(--button-bg); /* Couleur de la case à cocher */
+    cursor: pointer;
+}
+
+.modal-body h4 { /* Style pour les sous-titres dans la modale PNG */
+    margin-top: 15px;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: var(--text-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+.modal-body h4:first-child {
+    margin-top: 0;
+}
+
+
+.modal-footer button {
     padding: 10px 20px;
+    border: none;
     border-radius: 5px;
     cursor: pointer;
     font-size: 1em;
-    transition: all 0.3s ease;
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-.button-secondary:hover {
+.modal-footer button.button-primary {
     background-color: var(--button-bg);
     color: white;
 }
 
-/* Styles pour les toasts */
+.modal-footer button.button-primary:hover {
+    background-color: var(--button-hover-bg);
+    transform: translateY(-1px);
+}
+
+.modal-footer button.button-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+.dark-mode .modal-footer button.button-secondary {
+    background-color: #5a6268; 
+}
+
+.modal-footer button.button-secondary:hover {
+    background-color: #545b62; 
+    transform: translateY(-1px);
+}
+
+.modal-footer button.button-danger {
+    background-color: #dc3545;
+    color: white;
+}
+.dark-mode .modal-footer button.button-danger {
+    background-color: #c82333; 
+}
+
+
+.modal-footer button.button-danger:hover {
+    background-color: #bd2130; 
+    transform: translateY(-1px);
+}
+
+.person-actions {
+    display: flex;
+    gap: 5px; 
+}
+
+.glass-effect {
+    background: rgba(255, 255, 255, 0.2); 
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3); 
+    backdrop-filter: blur(5px); 
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); 
+    padding: 15px;
+    margin-bottom: 15px; 
+}
+
+.dark-mode .glass-effect {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.people-list-container h3 {
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+    color: var(--text-color); 
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
 #toastsContainer {
     position: fixed;
-    bottom: 20px;
+    bottom: 20px; 
     right: 20px;
-    z-index: 1050; /* Au-dessus des modales mais en dessous de potentiels éléments très critiques */
+    z-index: 1050; 
     display: flex;
-    flex-direction: column-reverse; /* Les nouveaux toasts apparaissent en bas */
+    flex-direction: column;
     gap: 10px;
+    align-items: flex-end; 
 }
 
 .toast {
     background-color: var(--toast-info-bg);
     color: var(--toast-text-color);
     padding: 10px 20px;
-    border-radius: 5px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    opacity: 0;
-    transform: translateY(100%);
-    transition: opacity 0.5s ease-out, transform 0.5s ease-out;
-    min-width: 250px;
-    max-width: 350px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out, transform 0.3s ease-out; 
+    transform: translateY(0); 
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 250px; 
+    max-width: 400px; 
 }
 
-.toast.show {
-    opacity: 1;
-    transform: translateY(0);
+.toast.fade-out {
+    opacity: 0;
+    transform: translateY(100%); 
 }
 
 .toast.info { background-color: var(--toast-info-bg); }
 .toast.success { background-color: var(--toast-success-bg); }
 .toast.error { background-color: var(--toast-error-bg); }
 
+.toast-spinner {
+    font-size: 1.2em;
+    animation: fa-spin 1s infinite linear; 
+}
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
-footer {
-    background-color: var(--footer-bg);
-    color: var(--text-color);
-    text-align: center;
-    padding: 15px;
+
+.table-container {
+    overflow-x: auto; 
     margin-top: 20px;
-    border-radius: 8px;
-    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
-}
-
-/* Styles Glassmorphism */
-.glass-effect {
-    background-color: var(--main-bg-color);
-    border-radius: 8px;
+    background-color: var(--main-bg-color); 
+    border-radius: 10px;
     border: 1px solid var(--border-color);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    padding: 15px;
 }
 
-/* Styles pour la table de statistiques */
-.stats-table-container {
-    max-height: 400px; /* Hauteur maximale du conteneur pour le défilement */
-    overflow-y: auto; /* Ajoute une barre de défilement verticale */
-    background-color: var(--input-bg); /* Fond du tableau */
-    border-radius: 8px; /* Bords arrondis pour le conteneur */
-    border: 1px solid var(--border-color); /* Bordure du conteneur */
-}
-
-.stats-table {
+.library-versions-table, .stats-table {
     width: 100%;
     border-collapse: collapse;
 }
 
+.library-versions-table th, .library-versions-table td,
 .stats-table th, .stats-table td {
-    padding: 12px 15px;
+    padding: 10px 12px;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
     color: var(--text-color);
+    font-size: 0.9em;
+    white-space: nowrap; 
 }
 
-.stats-table th {
-    background-color: var(--fullcalendar-header-bg);
+.library-versions-table th, .stats-table th {
+    background-color: var(--fullcalendar-header-bg); 
     font-weight: bold;
-    position: sticky; /* Entêtes fixes lors du défilement */
+    position: sticky; 
     top: 0;
     z-index: 1;
 }
-
-.stats-table tbody tr:nth-child(even) {
-    background-color: rgba(0, 0, 0, 0.02); /* Légère bande pour la lisibilité */
+.dark-mode .library-versions-table th, 
+.dark-mode .stats-table th {
+    background-color: var(--fullcalendar-header-bg); 
 }
 
+
+.library-versions-table tbody tr:nth-child(even),
+.stats-table tbody tr:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.02); 
+}
+
+.dark-mode .library-versions-table tbody tr:nth-child(even),
 .dark-mode .stats-table tbody tr:nth-child(even) {
     background-color: rgba(255, 255, 255, 0.02);
 }
 
+.library-versions-table .status-ok {
+    color: var(--toast-success-bg); 
+    font-weight: bold;
+}
+.dark-mode .library-versions-table .status-ok {
+    color: #38a169; 
+}
 
-/* Responsive design pour les petits écrans */
+.library-versions-table .status-update {
+    color: var(--toast-error-bg); 
+    font-weight: bold;
+}
+.dark-mode .library-versions-table .status-update {
+    color: #e53e3e; 
+}
+
+
+.library-versions-table a {
+    color: var(--button-bg);
+    text-decoration: none;
+}
+.dark-mode .library-versions-table a {
+    color: #63b3ed; 
+}
+
+.library-versions-table a:hover {
+    text-decoration: underline;
+}
+
+.note {
+    font-size: 0.8em;
+    color: var(--sidebar-text-color); 
+    margin-top: 15px;
+    text-align: center;
+}
+.dark-mode .note {
+    color: var(--sidebar-text-color); 
+}
+
+
+.recurring-options {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.recurring-options h4 {
+    margin-top: 0;
+    color: var(--text-color);
+    font-size: 1.1em;
+}
+.ml-2 { margin-left: 0.5rem; } 
+
+
 @media (max-width: 768px) {
     main {
-        flex-direction: column; /* Sur les petits écrans, sidebar et main-content s'empilent */
-        padding: 15px; /* Réduit le padding sur les petits écrans */
+        flex-direction: column; 
+        padding: 15px; 
         gap: 15px;
-        max-width: calc(100% - 30px); /* Ajuste pour le padding */
+        max-width: calc(100% - 30px); 
+        margin-top: 10px;
+        margin-bottom: 10px;
     }
 
     .sidebar {
-        width: 100%; /* La sidebar prend toute la largeur */
+        flex: 0 0 auto; 
+        min-width: unset;
         padding: 15px;
+        flex-direction: column; 
+        gap: 10px; 
     }
+    
+    .sidebar button,
+    .sidebar #themeToggleButton { 
+        width: 100%;
+        margin-bottom: 8px; 
+    }
+
+
+    .sidebar h2 {
+        width: 100%; 
+        text-align: center;
+        margin-bottom: 10px;
+        font-size: 1.2em;
+    }
+
+    .people-list-container {
+        width: 100%; 
+        margin-top: 10px;
+    }
+    .sidebar ul {
+        max-height: 200px; 
+    }
+
 
     .main-content {
         padding: 15px;
     }
+    #calendar {
+        min-height: 400px; 
+    }
+    .fc .fc-toolbar.fc-header-toolbar { 
+        flex-direction: column;
+        gap: 10px;
+    }
+    .fc .fc-toolbar.fc-header-toolbar .fc-toolbar-chunk {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+
+
+    header {
+        flex-direction: column;
+        text-align: center;
+        padding: 10px;
+    }
+
+    header h1 {
+        font-size: 1.5em;
+        margin-bottom: 10px;
+    }
+    #themeToggleButtonHeader { 
+        margin-top: 5px;
+    }
+
+    #toastsContainer {
+        bottom: 10px;
+        right: 10px;
+        left: 10px; 
+        width: auto;
+        align-items: center; 
+    }
+
+    .toast {
+        padding: 8px 15px;
+        font-size: 0.9em;
+        text-align: center;
+        width: 90%; 
+        max-width: 90%;
+    }
 
     .modal-content {
-        width: 95%; /* Modales un peu plus larges sur mobile */
+        width: calc(100% - 30px); 
+        margin: 15px; 
         padding: 20px;
     }
+    .modal-body {
+        max-height: 60vh; 
+    }
+
+
+    .stats-table, .library-versions-table {
+        font-size: 0.8em; 
+    }
+
+    .stats-table th, .stats-table td,
+    .library-versions-table th, .library-versions-table td {
+        padding: 6px 8px; 
+        white-space: normal; 
+    }
+    
+    footer {
+        padding: 8px 15px;
+        font-size: 0.75em;
+    }
+
 }
 
-/* NOUVEAU: Styles pour la modale d'exportation PNG et ses éléments */
-.checkbox-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px; /* Espace entre les checkboxes */
-}
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.3em;
+    }
+    .sidebar h2 {
+        font-size: 1.1em;
+    }
+    #addPersonBtn,
+    #addPlanningEventBtn,
+    #exportPdfBtn,
+    #exportPngBtn,
+    #exportJsonBtn,
+    #importJsonBtn,
+    #showStatsBtn,
+    #showLibraryVersionsBtn,
+    #themeToggleButton {
+        font-size: 0.85em; 
+        padding: 6px 10px;
+    }
+    .modal-header h2 {
+        font-size: 1.2em;
+    }
+    .modal-footer button {
+        font-size: 0.9em;
+        padding: 8px 15px;
+    }
+     .fc-button { 
+        font-size: 0.8em !important;
+    }
 
-.checkbox-group label {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    font-weight: normal; /* Override default label bold */
-}
-
-.checkbox-group input[type="checkbox"] {
-    appearance: none; /* Hide default checkbox */
-    -webkit-appearance: none;
-    width: 16px;
-    height: 16px;
-    border: 1px solid var(--input-border);
-    border-radius: 3px;
-    background-color: var(--input-bg);
-    cursor: pointer;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.checkbox-group input[type="checkbox"]:checked {
-    background-color: var(--button-bg);
-    border-color: var(--button-bg);
-}
-
-.checkbox-group input[type="checkbox"]:checked::before {
-    content: '\2713'; /* Checkmark character */
-    font-size: 12px;
-    color: white;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-}
-
-.checkbox-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-/* NOUVEAU: Style temporaire pour le fond blanc de l'export PNG */
-.white-bg-for-export {
-    background-color: #FFFFFF !important; /* Force le fond blanc */
-}
-.dark-mode .white-bg-for-export {
-    background-color: #FFFFFF !important; /* Force le fond blanc même en mode sombre */
-}
-
-/* Ajustements pour FullCalendar en mode fond blanc pour export */
-.white-bg-for-export .fc-theme-standard th,
-.white-bg-for-export .fc .fc-toolbar-title,
-.white-bg-for-export .fc .fc-col-header-cell-cushion,
-.white-bg-for-export .fc .fc-daygrid-day-number,
-.white-bg-for-export .fc .fc-list-item-title a,
-.white-bg-for-export .fc .fc-list-event-title,
-.white-bg-for-export .fc-day-other .fc-daygrid-day-number,
-.white-bg-for-export .fc-button-primary,
-.white-bg-for-export .fc-button-primary:hover,
-.white-bg-for-export .fc-event,
-.white-bg-for-export .fc-event-title-container {
-    color: #333 !important; /* Texte plus sombre pour le fond blanc */
-}
-
-.white-bg-for-export .fc-button-primary {
-    background-color: #FF7F50 !important; /* Conserver la couleur du bouton */
-    border-color: #FF7F50 !important;
-}
-
-.white-bg-for-export .fc-event {
-    background-color: #FF7F50 !important; /* Conserver la couleur de l'événement */
-}
-
-/* S'assurer que le calendrier lui-même a une bordure claire */
-.white-bg-for-export .fc-scrollgrid-sync-table {
-    border: 1px solid #ddd !important;
-}
-
-.white-bg-for-export .fc-theme-standard td {
-    border-color: #ddd !important;
 }
