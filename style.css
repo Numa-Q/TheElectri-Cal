@@ -1,3 +1,6 @@
+Voici le code CSS modifié pour positionner les toasts en bas à droite de la page. J'ai apporté les ajustements nécessaires au sélecteur `#toastsContainer` dans votre fichier `style.css`.
+
+```css
 /* style.css */
 
 /* Réinitialisation de base pour inclure padding et border dans la largeur/hauteur */
@@ -500,12 +503,16 @@ button.button-danger:hover {
 /* Toast notifications */
 #toastsContainer {
     position: fixed;
-    top: 20px;
+    bottom: 20px; /* Positionnement en bas */
     right: 20px;
+    left: unset; /* Assure que le positionnement à gauche est désactivé */
+    top: unset; /* Assure que le positionnement en haut est désactivé */
     z-index: 1050; /* Au-dessus de toutes les modales */
     display: flex;
-    flex-direction: column;
+    flex-direction: column-reverse; /* Les nouveaux toasts apparaissent au-dessus des anciens */
+    align-items: flex-end; /* Aligne les toasts à droite */
     gap: 10px;
+    pointer-events: none; /* Permet aux clics de passer à travers le conteneur vide */
 }
 
 .toast {
@@ -521,6 +528,7 @@ button.button-danger:hover {
     display: flex; /* Permet d'aligner le texte et l'icône */
     align-items: center; /* Centre verticalement */
     gap: 10px; /* Espace entre l'icône et le texte */
+    pointer-events: auto; /* Réactive les événements de souris pour le toast lui-même */
 }
 
 .toast.fade-out {
@@ -624,3 +632,4 @@ p.info-message {
         gap: 10px;
     }
 }
+```
