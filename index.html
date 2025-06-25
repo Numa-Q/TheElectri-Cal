@@ -38,7 +38,40 @@
         </section>
     </main>
 
-    <div id="modalsContainer"></div>
+    <div id="modalsContainer">
+        <div id="exportPngOptionsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Options d'Export PNG</h2>
+                    <span class="close-button" onclick="closeModal('exportPngOptionsModal')">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <p>Sélectionnez les types d'événements à inclure :</p>
+                        <div id="pngEventTypeFilters" class="checkbox-group">
+                            </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="pngAddWhiteBackground" checked> Ajouter un fond blanc
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="pngStartDate">Date de début de la période (optionnel) :</label>
+                        <input type="date" id="pngStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="pngEndDate">Date de fin de la période (optionnel) :</label>
+                        <input type="date" id="pngEndDate">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="button-primary" onclick="exportCalendarAsPng()">Exporter</button>
+                    <button class="button-secondary" onclick="closeModal('exportPngOptionsModal')">Annuler</button>
+                </div>
+            </div>
+        </div>
+        </div>
     <div id="toastsContainer" aria-live="polite" aria-atomic="true"></div>
 
     <footer>
@@ -54,7 +87,6 @@
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrBefore.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/minMax.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/plugin/isSameOrAfter.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="app.js"></script>
 </body>
